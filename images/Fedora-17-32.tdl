@@ -1,0 +1,55 @@
+<template>
+  <name>Fedora-17-32</name>
+  <description>Fedora 17 - 32</description>
+  <os>
+    <name>Fedora</name>
+    <version>17</version>
+    <arch>i386</arch>
+    <install type='iso'>
+      <iso>http://download.fedoraproject.org/pub/fedora/linux/releases/17/Fedora/i386/iso/Fedora-17-i386-DVD.iso</iso>
+    </install>
+  </os>
+  <disk>
+    <size>16</size>
+  </disk>
+  <packages>
+    <package name="cloud-init"/>
+    <package name="gcc"/>
+    <package name="git"/>
+    <package name="mercurial"/>
+    <package name="python-devel"/>
+    <package name="python-setuptools"/>
+    <package name="python-pip"/>
+    <package name="python-nose"/>
+  </packages>
+  <files>
+    <file name="/lib/systemd/system/cloud-init-inject.service">
+[Unit]
+Description=Inject cloud-init files
+Before=cloud-init.service cloud-init-local.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/mkdir -p /var/lib/cloud/seed
+ExecStart=/bin/cp -ar /boot/var/lib/cloud/seed/nocloud /var/lib/cloud/seed
+TimeoutSec=2
+RemainAfterExit=yes
+StandardOutput=tty
+
+[Install]
+WantedBy=multi-user.target
+    </file>
+  </files>
+  <commands>
+    <command name="disable_root_password">passwd -l root</command>
+    <command name="add_ravello_user">useradd ravello -p PWjhvSeSjMdYI</command>
+    <command name="allow_sudo_for_ravello">gpasswd -a ravello wheel</command>
+    <command name="link_python_pip">ln -s pip-python /bin/pip</command>
+    <command name="set_hostname">sed -i -e "s/^\(HOSTNAME\)=.*$/\1=Fedora-17-32/" /etc/sysconfig/network</command>
+    <command name="disable_ssh_password_auth">sed -i -e "s/\(PasswordAuthentication\) .*$/\1 no/" /etc/ssh/sshd_config.icicle</command>
+    <command name="clean_mac_address">sed -i -e "/^HWADDR=/d" /etc/sysconfig/network-scripts/ifcfg-eth0</command>
+    <command name="clean_dhcp_leases">rm -f /var/lib/dhclient/*</command>
+    <command name="configure_cloud_init">sed -i -e "s/^\(user\):.*$/\1: ravello/" -e "s/\(cloud_init_modules\)/datasource_list:\n  - NoCloud\n\n\1/" /etc/cloud/cloud.cfg</command>
+    <command name="inject_cloud_init">systemctl enable cloud-init-inject.service</command>
+  </commands>
+</template>
