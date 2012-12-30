@@ -685,7 +685,7 @@ class RunCommand(main.SubCommand):
 
         # Ready to go...
         appnames = ', '.join(manifest['applications'])
-        self.info('Applications to run: {0}'.format(appnames))
+        self.info('Environments to run: {0}'.format(appnames))
 
         # Ensure we have a keypair
         self.check_keypair()
@@ -697,7 +697,7 @@ class RunCommand(main.SubCommand):
         vmmap, addrmap = self.wait_until_applications_are_up(appmap, 600, 10)
         self.wait_until_vms_accept_ssh(addrmap, 300, 5)
         if hasattr(self, 'progress_bar_started'):
-            self.progress('DONE\n')
+            self.progress(' DONE\n')
 
         # Now run the tasks...
         self.setup_fabric_environment(appmap, vmmap, addrmap)
