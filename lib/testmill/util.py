@@ -15,6 +15,8 @@
 from __future__ import absolute_import, print_function
 
 import os
+import sys
+import stat
 import json
 
 
@@ -66,3 +68,21 @@ def merge(base, update):
             base[key] = value
         elif isinstance(base[key], dict) and isinstance(value, dict):
             merge(base[key], value)
+
+
+def get_config_dir():
+    """Get the local configuration directory, creating it if it doesn't
+    exist."""
+    homedir = os.path.expanduser('~')
+    subdir = '.ravello' if not sys.platform.startswith('win') else '_ravello'
+    configdir = os.path.join(homedir, subdir)
+    try:
+        st = os.stat(configdir)
+    except OSError:
+        st = None
+    if st is None:
+        os.mkdir(configdir)
+    elif st and not stat.S_ISDIR(st.st_mode):
+        m = '{0} exists but is not a directory'
+        raise OSError(m.format(configdir))
+    return configdir

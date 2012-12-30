@@ -20,7 +20,7 @@ import logging
 import textwrap
 
 import fabric.colors
-from . import command, ravello
+from . import command, ravello, util
 
 
 class MainCommand(command.CommandBase):
@@ -114,8 +114,8 @@ class SubCommand(command.CommandBase):
 
     def _try_token_login(self, api):
         """Try to log in with a token."""
-        homedir = os.path.expanduser('~')
-        tokfile = os.path.join(homedir, '.ravello-token')
+        cfgdir = util.get_config_dir()
+        tokfile = os.path.join(cfgdir, 'api-token')
         try:
             with file(tokfile) as ftok:
                 token = ftok.read()

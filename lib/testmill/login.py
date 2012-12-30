@@ -20,7 +20,7 @@ import os.path
 import getpass
 import textwrap
 
-from . import ravello, main
+from . import ravello, main, util
 
 
 class LoginCommand(main.SubCommand):
@@ -50,8 +50,8 @@ class LoginCommand(main.SubCommand):
         except ravello.RavelloError as e:
             self.error('Error: login failed (%s)' % e)
             self.exit(1)
-        homedir = os.path.expanduser('~')
-        tokname = os.path.join(homedir, '.ravello-token')
+        cfgdir = util.get_config_dir()
+        tokname = os.path.join(cfgdir, 'api-token')
         with file(tokname, 'w') as ftok:
             ftok.write('%s\n' % api._cookie)
         if hasattr(os, 'chmod'):
