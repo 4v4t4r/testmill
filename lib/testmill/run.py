@@ -17,10 +17,12 @@ from __future__ import absolute_import, print_function
 import os
 import re
 import sys
+import stat
 import os.path
 import getpass
 import textwrap
 import tempfile
+import subprocess
 import socket
 import select
 import errno
@@ -208,6 +210,91 @@ class RunCommand(main.SubCommand):
         parser.add_argument('--applications', '-A')
         parser.add_argument('command')
 
+    def _try_use_existing_keypair(self):
+        """Try to use a keypair that exists in ~/.ravello."""
+        cfgdir = util.get_config_dir()
+        privname = os.path.join(cfgdir, 'id_ravello')
+        try:
+            st = os.stat(privname)
+        except OSError:
+            return False
+        if not stat.S_ISREG(st.st_mode):
+            err = 'Error: {0} exists but is not a regular file'
+            self.error(err.format(privname, pubname))
+            self.exit(1)
+        pubname = privname + '.pub'
+        try:
+            st = os.stat(pubname)
+        except OSError:
+            st = None
+        if st is None or not stat.S_ISREG(st.st_mode):
+            err = "Error: {0} exists but {1} doesn't or isn't a regular file."
+            self.error(err.format(privname, pubname))
+            self.exit(1)
+        with file(pubname) as fin:
+            pubkey = fin.read()
+        keyparts = pubkey.strip().split()
+        pubkeys = self.api.get_pubkeys()
+        for pubkey in pubkeys:
+            if pubkey['name'] == keyparts[2]:
+                self.pubkey = pubkey
+                self.privkey_file = privname
+                return True
+        return False
+
+    def _create_new_keypair(self):
+        """Create a new keypair and upload it to Ravello."""
+        # First try to generate it locallly (= more privacy)
+        cfgdir = util.get_config_dir()
+        privname = os.path.join(cfgdir, 'id_ravello')
+        pubname = privname + '.pub'
+        keyname = 'ravello@%s' % socket.gethostname()
+        try:
+            self.info("Generating keypair using 'ssh-keygen'...")
+            subprocess.call(['ssh-keygen', '-q', '-t', 'rsa', '-C', keyname,
+                             '-b', '2048', '-N', '', '-f', privname])
+        except OSError:
+            self.info('Failed (ssh-keygen not found).')
+            pubkey = None
+        except subprocess.CalledProcessError as e:
+            err = 'Error: ssh-keygen returned with error status {0}'
+            self.error(err.format(e.returncode))
+        else:
+            with file(pubname) as fin:
+                pubkey = fin.read()
+            keyparts = pubkey.strip().split()
+        # If that failed, have the API generate one for us
+        if pubkey is None:
+            keyname = 'ravello@api-generated'
+            self.info('Requesting a new keypair via the API...')
+            keypair = self.api.create_keypair()
+            with file(privname, 'w') as fout:
+                fout.write(keypair['privateKey'])
+            with file(pubname, 'w') as fout:
+                fout.write(keypair['publicKey'].rstrip())
+                fout.write(' {0} (generated remotely)\n'.format(keyname))
+            pubkey = keypair['publicKey'].rstrip()
+            keyparts = pubkey.split()
+            keyparts[2:] = [keyname]
+        # Create the pubkey in the API under a unique name
+        pubkeys = self.api.get_pubkeys()
+        keyname = util.get_unused_name(keyname, pubkeys, sep=':')
+        keyparts[2] = keyname
+        keydata = '{0} {1} {2}\n'.format(*keyparts)
+        pubkey = ravello.Pubkey(name=keyname)
+        pubkey['publicKey'] = keydata
+        pubkey = self.api.create_pubkey(pubkey)
+        with file(pubname, 'w') as fout:
+            fout.write(keydata)
+        self.pubkey = pubkey
+        self.privkey_file = privname
+
+    def check_keypair(self):
+        """Check if we have a keypair. If not, create it."""
+        if self._try_use_existing_keypair():
+            return
+        self._create_new_keypair()
+
     def load_manifest(self):
         """Load and parse the manifest."""
         cwd = os.getcwd()
@@ -346,10 +433,21 @@ class RunCommand(main.SubCommand):
                 continue
             app = self.get_full_application(app['id'])
             vms = app['applicationLayer']['vm']
-            if len(vms) == 1 and vms[0]['shelfVmId'] == image['id']:
-                state = vms[0]['dynamicMetadata']['state']
-                if state in ('PUBLISHING', 'STARTING', 'STARTED', 'STOPPED'):
-                    candidates.append((state, app, vms[0]))
+            if len(vms) != 1:
+                continue
+            vm = vms[0]
+            if vm['shelfVmId'] != image['id']:
+                continue
+            state = vm['dynamicMetadata']['state']
+            if state not in ('PUBLISHING', 'STARTING', 'STARTED', 'STOPPED'):
+                continue
+            userdata = vm['customVmConfigurationData']
+            if not userdata:
+                continue
+            keypair = userdata.get('keypair')
+            if not keypair or keypair.get('id') != self.pubkey['id']:
+                continue
+            candidates.append((state, app, vms[0]))
         if not candidates:
             return
         candidates.sort(key=lambda x: self.VM_STATE_PREFERENCES.index(x[0]))
@@ -365,6 +463,7 @@ class RunCommand(main.SubCommand):
         image = self.get_image(name=appdef['vm'])
         image = self.get_full_image(image['id'])
         vm = ravello.update_luids(image)
+        vm['customVmConfigurationData'] = { 'keypair': self.pubkey }
         app = ravello.Application()
         name = util.get_unused_name(appdef['name'], self.applications)
         app['name'] = name
@@ -523,6 +622,7 @@ class RunCommand(main.SubCommand):
         # TODO: change to use pubkey based authentication
         fab.env.user = 'ravello'
         fab.env.password = 'ravelloCloud'
+        fab.env.key_filename = self.privkey_file
         # Suppress output for most actions
         fab.env.output_prefix = self.args.debug
         fabric.state.output.running = self.args.debug
@@ -586,6 +686,9 @@ class RunCommand(main.SubCommand):
         # Ready to go...
         appnames = ', '.join(manifest['applications'])
         self.info('Applications to run: {0}'.format(appnames))
+
+        # Ensure we have a keypair
+        self.check_keypair()
 
         # Start up the applications.
         appmap = self.start_applications(manifest)
