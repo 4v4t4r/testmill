@@ -42,7 +42,7 @@ setup(
     packages = ['testmill'],
     install_requires = ['setuptools'],
     entry_points = {
-        'console_scripts': ['rtm = testmill.main:main']
+        'console_scripts': ['ravtest = testmill.main:main']
     },
     **version_info
 )
