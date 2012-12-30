@@ -34,18 +34,18 @@ def splitname(name, sep='.'):
         return name, ''
 
 
-def get_unused_name(name, current):
+def get_unused_name(name, current, sep='.'):
     """Get a new, unused name."""
     used = set()
     for obj in current:
-        base, suffix = splitname(obj['name'])
-        if base == name:
+        base, suffix = splitname(obj['name'], sep)
+        if base == name and suffix:
             used.add(int(suffix))
     for i in range(1, len(used)+2):
         if i not in used:
             suffix = i
             break
-    return '%s.%d' % (name, suffix)
+    return '%s%s%d' % (name, sep, suffix)
 
 
 def load_class(name):
