@@ -192,7 +192,7 @@ class RunCommand(main.SubCommand):
             """)
     description = textwrap.dedent("""\
             Run a command in one or more Ravello applications.  The
-            applications are specified in the  manifest (.testmill.yml) .
+            applications are specified in the  manifest (.ravello.yml) .
 
             The available options are:
                 -A <applist>, --applications <applist>
@@ -298,16 +298,16 @@ class RunCommand(main.SubCommand):
     def load_manifest(self):
         """Load and parse the manifest."""
         cwd = os.getcwd()
-        ymlfile = os.path.join(cwd, '.testmill.yml')
+        ymlfile = os.path.join(cwd, '.ravello.yml')
         if not os.access(ymlfile, os.R_OK):
-            m = 'Error: project manifest (.testmill.yml) not found.\n'
+            m = 'Error: project manifest (.ravello.yml) not found.\n'
             self.error(m)
             self.exit(1)
         with file(ymlfile) as fin:
             try:
                 manifest = yaml.load(fin)
             except yaml.parser.ParserError as e:
-                self.error('Error: illegal YAML in .testmill.yml')
+                self.error('Error: illegal YAML in .ravello.yml')
                 self.error('Message from parser: {0!s}'.format(e))
         self.manifest = manifest
         self.default_manifest = yaml.load(DEFAULT_MANIFEST)
@@ -660,7 +660,7 @@ class RunCommand(main.SubCommand):
         # Detect language, if "language" is not given.
         self.detect_language(manifest)
 
-        # Expand from shorthand .testmill.yml notation to full notation.
+        # Expand from shorthand .ravello.yml notation to full notation.
         # Also check for missing or conflicting keys.
         self.check_and_explode_manifest(manifest)
 
