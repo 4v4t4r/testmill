@@ -1,0 +1,53 @@
+install
+text
+keyboard us
+lang en_US.UTF-8
+skipx
+network --device eth0 --bootproto dhcp
+rootpw PWjhvSeSjMdYI
+firewall --disabled
+authconfig --enableshadow --enablemd5
+selinux --enforcing
+timezone --utc America/New_York
+reboot
+part / --fstype ext4 --onpart /dev/vda1
+part swap --fstype swap --onpart /dev/vda2
+bootloader --location=mbr --timeout=2 --append="rhgb quiet"
+
+%packages
+@core
+@base
+%end
+
+%pre
+parted -s /dev/vda -- mklabel msdos
+parted -s /dev/vda -- mkpart primary ext4 2048s -4194305s
+parted -s /dev/vda -- mkpart primary linux-swap -4194304s -1s
+parted -s /dev/vda -- set 1 boot on
+partprobe /dev/vda
+%end
+
+%post --nochroot
+cp /etc/resolv.conf /mnt/sysimage/etc
+%end
+
+%post
+yum -y update
+yum -y install gcc make autoconf automake libtool git mercurial bazaar \
+        subversion cloud-init python-devel python-setuptools python-pip \
+        python-nose
+
+passwd -l root
+useradd ravello -p PWjhvSeSjMdYI
+gpasswd -a ravello wheel
+ln -s pip-python /usr/bin/pip
+sed -i -e "s/^\(HOSTNAME\)=.*$/\1=Fedora/" /etc/sysconfig/network
+sed -i -e "s/^\(PasswordAuthentication\) .*$/\1 no/" /etc/ssh/sshd_config
+sed -i -e "s/^\(%wheel.*\)$/# \1/" -e "s/^# \(%wheel.*NOPASSWD.*\)$/\1/" \
+    /etc/sudoers
+sed -i -e "/^HWADDR=/d" /etc/sysconfig/network-scripts/ifcfg-eth0
+rm -f /var/lib/dhclient/*
+sed -i -e "s/^\(user\):.*$/\1: ravello/" \
+    -e "s/\(cloud_init_modules\)/datasource_list:\n  - NoCloud\n\n\1/" \
+    /etc/cloud/cloud.cfg
+%end
