@@ -1,0 +1,15 @@
+<template>
+  <name>Fedora-16-64</name>
+  <description>Fedora 16 - 64bit</description>
+  <os>
+    <name>Fedora</name>
+    <version>16</version>
+    <arch>x86_64</arch>
+    <install type='iso'>
+      <iso>http://download.fedoraproject.org/pub/fedora/linux/releases/16/Fedora/x86_64/iso/Fedora-16-x86_64-DVD.iso</iso>
+    </install>
+  </os>
+  <disk>
+    <size>16</size>
+  </disk>
+</template>
