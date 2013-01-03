@@ -1,0 +1,53 @@
+<template>
+  <name>Ubuntu-12.04-32</name>
+  <description>Ubuntu 12.04LTS - 32bit</description>
+  <os>
+    <name>Ubuntu</name>
+    <version>12.04</version>
+    <arch>i386</arch>
+    <rootpw>ravelloCloud</rootpw>
+    <install type='iso'>
+      <iso>http://releases.ubuntu.com/12.04.1/ubuntu-12.04.1-server-i386.iso</iso>
+    </install>
+  </os>
+  <disk>
+    <size>16</size>
+  </disk>
+  <packages>
+    <!-- Base development -->
+    <package name="gcc"/>
+    <package name="make"/>
+    <package name="autoconf"/>
+    <package name="automake"/>
+    <package name="libtool"/>
+    <package name="gdb"/>
+    <!-- Version control -->
+    <package name="git"/>
+    <package name="mercurial"/>
+    <package name="bzr"/>
+    <package name="subversion"/>
+    <!-- Python 2.x stack -->
+    <package name="python-dev"/>
+    <package name="python-setuptools"/>
+    <package name="python-pip"/>
+    <package name="python-nose"/>
+    <!-- Python 3.x stack -->
+    <package name="python3-dev"/>
+    <package name="python3-setuptools"/>
+    <package name="python3-nose"/>
+    <!-- Ruby stack -->
+    <package name="ruby-dev"/>
+    <package name="rake"/>
+    <package name="rubygems"/>
+    <package name="ruby-bundler"/>
+    <package name="ruby-rspec"/>
+    <!-- Java stack -->
+    <package name="openjdk-7-jdk"/>
+    <package name="maven2"/>
+    <package name="ivy"/>
+  </packages>
+  <commands>
+    <command name="install_pip3">easy_install3 pip==1.2.1</command>
+    <command name="link_pip3">ln -s pip-3.2 /usr/local/bin/pip3</command>
+  </commands>
+</template>
