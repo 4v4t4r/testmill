@@ -1,0 +1,51 @@
+install
+text
+keyboard us
+lang en_US.UTF-8
+skipx
+network --device eth0 --bootproto dhcp
+rootpw %ROOTPW%
+firewall --disabled
+authconfig --enableshadow --enablemd5
+selinux --enforcing
+timezone --utc America/New_York
+reboot
+part / --fstype ext4 --onpart /dev/vda1
+part swap --fstype swap --onpart /dev/vda2
+bootloader --location=mbr --timeout=2 --append="rhgb quiet"
+
+%packages
+@core
+@base
+%end
+
+%pre
+parted -s /dev/vda -- mklabel msdos
+parted -s /dev/vda -- mkpart primary ext4 2048s -4194305s
+parted -s /dev/vda -- mkpart primary linux-swap -4194304s -1s
+parted -s /dev/vda -- set 1 boot on
+partprobe /dev/vda
+%end
+
+%post --nochroot
+cp /etc/resolv.conf /mnt/sysimage/etc
+%end
+
+%post
+exec >/dev/tty6 2>&1
+
+yum -y --exclude=kernel\* update
+yum -y install cloud-init
+passwd -l root
+useradd -m ravello -p PWjhvSeSjMdYI
+gpasswd -a ravello wheel
+sed -i -e "s/^HOSTNAME=.*$/HOSTNAME=Fedora/" /etc/sysconfig/network
+sed -i -e "s/^PasswordAuthentication .*$/#&/" \
+        -e "$ a PasswordAuthentication no" /etc/ssh/sshd_config
+sed -i -e "s/^%wheel.*$/%wheel ALL=(ALL:ALL) NOPASSWD: ALL/" /etc/sudoers
+sed -i -e "/^HWADDR=/d" /etc/sysconfig/network-scripts/ifcfg-eth0
+rm -f /var/lib/dhclient/*
+sed -i -e "s/^user:.*$/#&/" \
+        -e "$ a user: ravello\ndatasource_list: [ NoCloud ]" \
+        /etc/cloud/cloud.cfg
+%end
