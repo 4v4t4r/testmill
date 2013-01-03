@@ -5,6 +5,7 @@
     <name>Fedora</name>
     <version>17</version>
     <arch>i386</arch>
+    <rootpw>ravelloCloud</rootpw>
     <install type='iso'>
       <iso>http://download.fedoraproject.org/pub/fedora/linux/releases/17/Fedora/i386/iso/Fedora-17-i386-DVD.iso</iso>
     </install>
@@ -12,4 +13,43 @@
   <disk>
     <size>16</size>
   </disk>
+  <packages>
+    <!-- Base development -->
+    <package name="gcc"/>
+    <package name="make"/>
+    <package name="autoconf"/>
+    <package name="automake"/>
+    <package name="libtool"/>
+    <package name="gdb"/>
+    <!-- Version control -->
+    <package name="git"/>
+    <package name="mercurial"/>
+    <package name="bzr"/>
+    <package name="subversion"/>
+    <!-- Python 2.x stack -->
+    <package name="python-devel"/>
+    <package name="python-setuptools"/>
+    <package name="python-pip"/>
+    <package name="python-nose"/>
+    <!-- Python 3.x stack -->
+    <package name="python3-devel"/>
+    <package name="python3-setuptools"/>
+    <package name="python3-pip"/>
+    <package name="python3-nose"/>
+    <!-- Ruby stack -->
+    <package name="ruby-devel"/>
+    <package name="rubygems"/>
+    <package name="rubygem-rake"/>
+    <package name="rubygem-bundler"/>
+    <package name="rubygem-rspec"/>
+    <!-- Java stack -->
+    <package name="java-1.7.0-openjdk-devel"/>
+    <package name="maven"/>
+    <package name="apache-ivy"/>
+  </packages>
+  <commands>
+    <command name="link_pip">ln -s pip-python /bin/pip</command>
+    <command name="link_pip3">ln -s pip-python3 /bin/pip3</command>
+    <command name="link_easy_install3">ln -s easy_install-3.2 /bin/easy_install3</command>
+  </commands>
 </template>
