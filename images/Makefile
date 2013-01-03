@@ -1,6 +1,6 @@
 TEMPLATES = $(wildcard *.tdl)
 IMAGES = $(patsubst %.tdl, %.xml, $(TEMPLATES))
-OZ_INSTALL = oz-install -u -t 14400
+OZ_INSTALL = oz-install -u -t 14400 -d3
 
 all: $(IMAGES)
 
