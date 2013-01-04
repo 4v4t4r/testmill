@@ -1,6 +1,6 @@
 <template>
-  <name>Ubuntu-12.04-64</name>
-  <description>Ubuntu 12.04LTS - 64bit</description>
+  <name>Ubuntu-12.04</name>
+  <description>Ubuntu 12.04 LTS - 64bit</description>
   <os>
     <name>Ubuntu</name>
     <version>12.04</version>
@@ -45,6 +45,9 @@
     <package name="openjdk-7-jdk"/>
     <package name="maven2"/>
     <package name="ivy"/>
+    <!-- Clojure -->
+    <package name="clojure1.3"/>
+    <package name="leiningen"/>
   </packages>
   <commands>
     <command name="install_pip3">easy_install3 pip==1.2.1</command>

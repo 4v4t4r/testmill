@@ -1,13 +1,13 @@
 <template>
-  <name>Fedora-17-64</name>
-  <description>Fedora 17 - 64bit</description>
+  <name>Fedora-16</name>
+  <description>Fedora 16 - 64bit</description>
   <os>
     <name>Fedora</name>
-    <version>17</version>
+    <version>16</version>
     <arch>x86_64</arch>
     <rootpw>ravelloCloud</rootpw>
     <install type='iso'>
-      <iso>http://download.fedoraproject.org/pub/fedora/linux/releases/17/Fedora/x86_64/iso/Fedora-17-x86_64-DVD.iso</iso>
+      <iso>http://download.fedoraproject.org/pub/fedora/linux/releases/16/Fedora/x86_64/iso/Fedora-16-x86_64-DVD.iso</iso>
     </install>
   </os>
   <disk>

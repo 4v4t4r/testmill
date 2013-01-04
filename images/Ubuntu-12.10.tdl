@@ -1,5 +1,5 @@
 <template>
-  <name>Ubuntu-12.10-64</name>
+  <name>Ubuntu-12.10</name>
   <description>Ubuntu 12.10 - 64bit</description>
   <os>
     <name>Ubuntu</name>
@@ -46,6 +46,9 @@
     <package name="openjdk-7-jdk"/>
     <package name="maven2"/>
     <package name="ivy"/>
+    <!-- Clojure -->
+    <package name="clojure1.4"/>
+    <package name="leiningen"/>
   </packages>
   <commands>
     <command name="link_pip3">ln -s pip-3.2 /usr/bin/pip3</command>
