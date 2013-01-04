@@ -40,7 +40,7 @@ version_info = {
 setup(
     package_dir = { '': 'lib' },
     packages = ['testmill'],
-    install_requires = ['setuptools'],
+    install_requires = ['fabric', 'pyyaml'],
     entry_points = {
         'console_scripts': ['ravtest = testmill.main:main']
     },
