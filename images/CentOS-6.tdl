@@ -1,0 +1,44 @@
+<template>
+  <name>CentOS-6</name>
+  <description>CentOS 6 - 64bit</description>
+  <os>
+    <name>CentOS-6</name>
+    <version>3</version>
+    <arch>x86_64</arch>
+    <rootpw>ravelloCloud</rootpw>
+    <install type='iso'>
+      <iso>http://centos.fastbull.org/centos/6.3/isos/x86_64/CentOS-6.3-x86_64-bin-DVD1.iso</iso>
+    </install>
+  </os>
+  <disk>
+    <size>16</size>
+  </disk>
+  <packages>
+    <!-- Base development -->
+    <package name="gcc"/>
+    <package name="make"/>
+    <package name="autoconf"/>
+    <package name="automake"/>
+    <package name="libtool"/>
+    <package name="gdb"/>
+    <!-- Version control -->
+    <package name="git"/>
+    <package name="mercurial"/>
+    <package name="bzr"/>
+    <package name="subversion"/>
+    <!-- Python 2.x stack -->
+    <package name="python-devel"/>
+    <package name="python-setuptools"/>
+    <package name="python-pip"/>
+    <package name="python-nose"/>
+    <!-- Ruby stack -->
+    <package name="ruby-devel"/>
+    <package name="rubygems"/>
+    <package name="rubygem-rake"/>
+    <package name="rubygem-bundler"/>
+    <package name="rubygem-rspec"/>
+  </packages>
+  <commands>
+    <command name="link_pip">ln -s pip-python /usr/bin/pip</command>
+  </commands>
+</template>
