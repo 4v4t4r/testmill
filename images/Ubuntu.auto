@@ -4,6 +4,7 @@ d-i console-setup/layoutcode string us
 
 d-i netcfg/choose_interface select auto
 d-i netcfg/get_hostname string Ubuntu
+d-i netcfg/dhcp_hostname string Ubuntu
 d-i netcfg/get_domain string localdomain
 d-i netcfg/wireless_wep string
 
@@ -43,11 +44,14 @@ d-i preseed/late_command string \
     in-target useradd -m ravello -p PWjhvSeSjMdYI; \
     in-target gpasswd -a ravello sudo; \
     in-target sed -i -e "s/^PasswordAuthentication .*$/#&/" \
-        -e "$ a PasswordAuthentication no" /etc/ssh/sshd_config; \
-    in-target sed -i -e "s/^%sudo.*$/%sudo ALL=(ALL:ALL) NOPASSWD: ALL/" \
+        -e "$ a PasswordAuthentication no" \
+        /etc/ssh/sshd_config; \
+    in-target sed -i -e "s/^%sudo.*$/#&/" \
+        -e "$ a %sudo ALL=(ALL) NOPASSWD: ALL" \
         /etc/sudoers; \
     in-target sh -c 'rm -f /var/lib/dhcp/*'; \
     in-target sed -i -e "s/^user:.*$/#&/" \
+        -e "s/^datasource_list.*$/#&/" \
         -e "$ a user: ravello\ndatasource_list: [ NoCloud ]" \
         /etc/cloud/cloud.cfg; \
     in-target sh -c 'rm -f /etc/cloud/cloud.cfg.d/*_dpkg.cfg';
