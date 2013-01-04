@@ -88,8 +88,9 @@ class SubCommand(command.CommandBase):
         self._api = None
 
     def error(self, message):
-        # Too funky?
-        super(SubCommand, self).error(fabric.colors.red(message))
+        if not sys.platform.startswith('win'):
+            message = fabric.colors.red(message)
+        super(SubCommand, self).error(message)
 
     def info(self, message):
         """Write an informational message to standard output, if not in
