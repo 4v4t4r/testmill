@@ -39,7 +39,7 @@ ubiquity ubiquity/reboot boolean true
 d-i preseed/late_command string \
     in-target apt-get update; \
     in-target apt-get -y upgrade; \
-    in-target apt-get -y install cloud-init; \
+    in-target apt-get -y install cloud-init curl; \
     in-target passwd -l root; \
     in-target useradd -m ravello -p PWjhvSeSjMdYI; \
     in-target gpasswd -a ravello sudo; \
