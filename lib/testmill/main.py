@@ -121,15 +121,15 @@ class SubCommand(command.CommandBase):
             with file(tokfile) as ftok:
                 token = ftok.read()
         except IOError:
-            self.error('Error: no Ravello credentials provided\n')
-            self.error('Specify --user and --password, or use "ravello login\n')
+            self.error('Error: no Ravello credentials provided')
+            self.error('Specify --user and --password, or use "ravello login.')
             self.exit(1)
         token = token.strip()
         try:
             api.login(token=token)
         except ravello.RavelloError as e:
-            self.error('Error: could not login to Ravello with token\n')
-            self.error('Try "ravello login" to refresh it\n')
+            self.error('Error: could not login to Ravello with token')
+            self.error('Try "ravello login" to refresh it.')
             self.exit(1)
 
     @property
