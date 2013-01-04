@@ -25,7 +25,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
     class show_help(argparse.Action):
         def __call__(self, parser, ns, vals, opts):
-            if ns.command is None:
+            if not getattr(ns, 'command', None):
                 parser.print_help()
                 parser.exit(0)
             ns.help = True
@@ -73,20 +73,20 @@ class CommandBase(object):
             return
         parser.add_argument('command')
 
-    def parse_args(self, args=None, default=None):
+    def parse_args(self, args=None, defaults=None):
         """Parse arguments."""
         parser = ArgumentParser(usage=self.usage, description=self.description,
                                 add_help=False)
         parser.add_argument('-h', '--help', action=parser.show_help, nargs=0)
         self.add_args(parser)
-        if default and default.help:
+        if defaults and defaults.help:
             args.insert(0, '--help')
         args, remaining = parser.parse_known_args(args)
         if remaining and not self.sub_commands:
             parser.error('unrecognized arguments: %s' % ' '.join(remaining))
-        if default:
-            default.__dict__.update(args.__dict__)
-            args = default
+        if defaults:
+            defaults.__dict__.update(args.__dict__)
+            args = defaults
         self.args = args
         self.remaining = remaining
         self.parser = parser

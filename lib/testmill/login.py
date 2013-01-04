@@ -27,7 +27,7 @@ class LoginCommand(main.SubCommand):
 
     name = 'login'
     usage = textwrap.dedent("""\
-            usage: rtm login
+            usage: ravtest login
             """)
     description = textwrap.dedent("""\
             Logs into Ravello and stores a temporary token granting access
@@ -48,12 +48,13 @@ class LoginCommand(main.SubCommand):
         try:
             api.login(username, password)
         except ravello.RavelloError as e:
-            self.error('Error: login failed (%s)' % e)
+            self.error('Error: login failed ({0!s})'.format(e))
             self.exit(1)
         cfgdir = util.get_config_dir()
         tokname = os.path.join(cfgdir, 'api-token')
         with file(tokname, 'w') as ftok:
-            ftok.write('%s\n' % api._cookie)
+            ftok.write(api._cookie)
+            ftok.write('\n')
         if hasattr(os, 'chmod'):
             os.chmod(tokname, 0600)
         # note: no api.logout()!

@@ -23,7 +23,7 @@ class PsCommand(main.SubCommand):
 
     name = 'ps'
     usage = textwrap.dedent("""\
-            usage: rtm ps
+            usage: ravtest ps
             """)
     description = textwrap.dedent("""\
             Show your running applications in Ravello.
@@ -49,9 +49,9 @@ class PsCommand(main.SubCommand):
                 starttime = time.strftime('%Y/%m/%d %H:%M:%S', tm)
             else:
                 starttime = ''
-            self.write('== %s' % name)
-            self.write('  %d/%d VMs running' % (started, total))
-            self.write('  published to %s/%s' % (cloud, region))
+            self.write('== {0}'.format(name))
+            self.write('  {0}/{1} VMs running'.format(started, total))
+            self.write('  published to {0}/{1}'.format(cloud, region))
             if started:
-                self.write('  started: %s' % starttime)
+                self.write('  started: {0}'.format(starttime))
             self.write('')

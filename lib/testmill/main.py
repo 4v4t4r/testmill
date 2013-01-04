@@ -30,17 +30,17 @@ class MainCommand(command.CommandBase):
     """
 
     usage = textwrap.dedent("""\
-            usage: rtm [-u <user>] [-p <password>] [-s <service_url>]
-                       [-q] [-d] [-y] [-h] <command> [<args>]
+            usage: ravtest [-u <user>] [-p <password>] [-s <service_url>]
+                           [-q] [-d] [-y] [-h] <command> [<args>]
                        """)
     description = textwrap.dedent("""\
-        Ravello TestMill command-line interface.
+        Ravello TestMill, a system test driver for Ravello.
 
         The available options are:
             -u <user>, --user <user>
-                Specifies the Ravello API user name
+                Specifies the Ravello user name
             -p <password>, --password <password>
-                Specifies the Ravello API password
+                Specifies the Ravello password
             -s <service_url>, --service-url <service_url>
                 Specifies the Ravello API entry point
             -q, --quiet

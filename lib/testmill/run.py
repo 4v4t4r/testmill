@@ -42,37 +42,38 @@ from fabric import api as fab
 DEFAULT_MANIFEST = textwrap.dedent("""\
     defaults:
         keep: 90
-        pack:
-            local: True
         renew:
-            sudo: True
-            commands:
-            - "atrm `atq | awk '{{print $1}}'` || true"
+            task: testmill.run:RenewTask
+        pack:
+            task: testmill.run:PackTask
+        copy:
+            task: testmill.run:CopyTask
+        unpack:
+            task: testmill.run:UnpackTask
         sysinit:
             task: testmill.run:SysinitTask
-            sudo: True
-        copy:
-            commands:
-            - "mkdir {env.DISTBASE}"
+        prepare:
+            task: testmill.run:PrepareTask
         execute:
             task: testmill.run:ExecuteTask
-            commands:
-            - "{env.COMMAND}"
+        cleanup:
+            task: testmill.run:CleanupTask
     language_defaults:
         python:
             pack:
                 commands:
                 - "python setup.py sdist --dist-dir {env.DISTDIR}"
-            copy:
-                task: testmill.run:CopyTask
             unpack:
                 commands:
                 - "mkdir dist && mv *.tar.gz dist && tar xvfz dist/*.tar.gz --strip-components=1"
             prepare:
                 commands:
-                - "python setup.py build"
+                - "test -f requirements.txt && sudo pip install -r requirements.txt || true; python setup.py build"
+            execute:
+                commands:
+                - "python setup.py test"
     language: null
-    applications: {}
+    environments: []
 """)
 
 DEFAULT_TASKS = frozenset(('pack', 'renew', 'sysinit', 'copy', 'unpack',
@@ -82,8 +83,8 @@ DEFAULT_TASKS = frozenset(('pack', 'renew', 'sysinit', 'copy', 'unpack',
 def get_task(name, manifest, host):
     """Load a task from a manifest."""
     env = fab.env
-    appname = env.appmap[env.vmmap[env.addrmap[host]]]
-    taskdef = manifest['applications'][appname][name]
+    envname = env.appmap[env.vmmap[env.addrmap[host]]]
+    taskdef = manifest[envname][name]
     if not taskdef:
         return
     cls = util.load_class(taskdef.pop('task'))
@@ -108,24 +109,48 @@ def run_tasks(names, manifest):
 class Task(fabric.tasks.Task):
     """A task from the manifest."""
 
-    def __init__(self, name=None, manifest=None, commands=None, local=False,
-                 sudo=False):
+    def __init__(self, name=None, manifest=None, commands=None):
         super(Task, self).__init__()
         self.name = name or self.name
         self.manifest = manifest
         self.commands = commands or []
-        self.local = local
-        self.sudo = sudo
 
-    def run(self):
+    def run(self, local=False, sudo=False):
         for command in self.commands:
             command = command.format(env=fab.env)
-            if self.local:
+            if local:
                 fab.local(command)
-            elif self.sudo:
+            elif sudo:
                 fab.sudo(command)
             else:
                 fab.run(command)
+
+
+class RenewTask(Task):
+    """Re-new the lease for a VM."""
+
+    def run(self):
+        fab.sudo("atrm `atq | awk '{print $1}'` || true")
+
+
+class PackTask(Task):
+    """Pack the project to {env.DISTDIR}."""
+
+    def run(self):
+        super(PackTask, self).run(local=True)
+
+
+class CopyTask(Task):
+    """Copy the local contents from env.DISTDIR."""
+
+    def run(self):
+        fab.run('mkdir %s' % fab.env.DISTBASE)
+        fab.put('%s/*' % fab.env.DISTDIR, fab.env.DISTBASE)
+        fab.env.cwd = fab.env.DISTBASE
+
+
+class UnpackTask(Task):
+    """Unpack the project into the current working directory."""
 
 
 class SysinitTask(Task): 
@@ -140,17 +165,12 @@ class SysinitTask(Task):
                       warn_only=True, quiet=True)
         if ret.succeeded:
             return
-        super(SysinitTask, self).run()
+        super(SysinitTask, self).run(sudo=True)
         fab.run('touch ~/%s.done' % self.name)
 
 
-class CopyTask(Task):
-    """Copy the local contents from env.DISTDIR."""
-
-    def run(self):
-        fab.run('mkdir %s' % fab.env.DISTBASE)
-        fab.put('%s/*' % fab.env.DISTDIR, fab.env.DISTBASE)
-        fab.env.cwd = fab.env.DISTBASE
+class PrepareTask(Task):
+    """Prepare a VM for running the tests."""
 
 
 class ExecuteTask(Task):
@@ -171,7 +191,7 @@ class ExecuteTask(Task):
         appid = env.vmmap[vmid]
         name = env.appmap[appid]
         # TODO: shutdown multi-vm apps
-        delay = min(90, self.manifest['applications'][name]['keep'])
+        delay = min(90, self.manifest[name]['keep'])
         url = '%s/deployment/app/%d/vm/%s/stop' % (env.API_URL, appid, vmid)
         cmd = 'curl --cookie %s --request POST %s; ' % (env.API_COOKIE, url)
         cmd += 'shutdown -h now'
@@ -181,6 +201,10 @@ class ExecuteTask(Task):
     def run(self):
         self.schedule_shutdown()
         super(ExecuteTask, self).run()
+
+
+class CleanupTask(Task):
+    """Finalize the run."""
 
 
 class RunCommand(main.SubCommand):
@@ -198,6 +222,8 @@ class RunCommand(main.SubCommand):
                 -A <applist>, --applications <applist>
                     Only run the command on these applications.
                     <applist> is a comma-separated list of names
+                -c, --continue
+                    Continue running even after an error
                 --new
                     Never re-use existing applications
                 --dump
@@ -205,10 +231,12 @@ class RunCommand(main.SubCommand):
             """)
 
     def add_args(self, parser):
+        parser.add_argument('--environments', '-E')
+        parser.add_argument('--continue', '-c', action='store_true',
+                            dest='continue_')
         parser.add_argument('--new', action='store_true')
         parser.add_argument('--dump', action='store_true')
-        parser.add_argument('--applications', '-A')
-        parser.add_argument('command')
+        parser.add_argument('command', nargs='?')
 
     def _try_use_existing_keypair(self):
         """Try to use a keypair that exists in ~/.ravello."""
@@ -219,8 +247,8 @@ class RunCommand(main.SubCommand):
         except OSError:
             return False
         if not stat.S_ISREG(st.st_mode):
-            err = 'Error: {0} exists but is not a regular file'
-            self.error(err.format(privname, pubname))
+            m = 'Error: {0} exists but is not a regular file'
+            self.error(m.format(privname, pubname))
             self.exit(1)
         pubname = privname + '.pub'
         try:
@@ -228,8 +256,8 @@ class RunCommand(main.SubCommand):
         except OSError:
             st = None
         if st is None or not stat.S_ISREG(st.st_mode):
-            err = "Error: {0} exists but {1} doesn't or isn't a regular file."
-            self.error(err.format(privname, pubname))
+            m = "Error: {0} exists but {1} doesn't or isn't a regular file."
+            self.error(m.format(privname, pubname))
             self.exit(1)
         with file(pubname) as fin:
             pubkey = fin.read()
@@ -257,8 +285,8 @@ class RunCommand(main.SubCommand):
             self.info('Failed (ssh-keygen not found).')
             pubkey = None
         except subprocess.CalledProcessError as e:
-            err = 'Error: ssh-keygen returned with error status {0}'
-            self.error(err.format(e.returncode))
+            m = 'Error: ssh-keygen returned with error status {0}'
+            self.error(m.format(e.returncode))
         else:
             with file(pubname) as fin:
                 pubkey = fin.read()
@@ -300,7 +328,7 @@ class RunCommand(main.SubCommand):
         cwd = os.getcwd()
         ymlfile = os.path.join(cwd, '.ravello.yml')
         if not os.access(ymlfile, os.R_OK):
-            m = 'Error: project manifest (.ravello.yml) not found.\n'
+            m = 'Error: project manifest (.ravello.yml) not found.'
             self.error(m)
             self.exit(1)
         with file(ymlfile) as fin:
@@ -309,6 +337,7 @@ class RunCommand(main.SubCommand):
             except yaml.parser.ParserError as e:
                 self.error('Error: illegal YAML in .ravello.yml')
                 self.error('Message from parser: {0!s}'.format(e))
+                self.exit(1)
         self.manifest = manifest
         self.default_manifest = yaml.load(DEFAULT_MANIFEST)
         return manifest
@@ -337,99 +366,75 @@ class RunCommand(main.SubCommand):
     def check_and_explode_manifest(self, manifest):
         """Check the manifest semantical errors and explode it at the same
         time. NOTE: updates `manifest`."""
-        # move application definitions under the "applications" key
-        manifest.setdefault('applications', {})
-        for key,value in list(manifest.items()):
-            if isinstance(value, dict) and ('vm' in value
-                    or 'application' in value or 'blueprint' in value):
-                manifest['applications'][key] = value
-                del manifest[key]
-        # Explode application definitions
-        for name,appdef in list(manifest['applications'].items()):
-            if 'vm' not in appdef:
-                m = 'Error: application "{0}" does not define key "vm"'
-                self.error(m.format(name))
-                self.exit(1)
-            appname = appdef.get('application')
-            bpname = appdef.get('blueprint')
-            if appname is not None and bpname is not None:
-                m = 'Error: application "{0}": cannot specify both ' \
-                    '"application" and "blueprint".'
-                self.error(m.format(name))
-                self.exit(1)
-            if appname is not None and self.args.new:
-                m = 'Warning: application "{0}": ignoring --new'
-                self.error(m.format(name))
-            if 'name' not in appdef:
-                appdef['name'] = name
+        util.merge(manifest, self.default_manifest)
+        # Explode environment definitions
+        manifest.setdefault('environments', [])
+        for name in manifest['environments']:
+            if name not in manifest:
+                manifest[name] = {}
+            envdef = manifest[name]
+            if 'name' not in envdef:
+                envdef['name'] = name
+            if 'vm' not in envdef:
+                envdef['vm'] = name
+            # Explode tasks
             for taskname in DEFAULT_TASKS:
-                taskdef = appdef.get(taskname)
+                taskdef = envdef.get(taskname)
                 if taskdef is None:
-                    taskdef = appdef[taskname] = {}
-                elif isinstance(taskdef, list):
-                    taskdef = appdef[taskname] = { 'commands': taskdef }
+                    taskdef = envdef[taskname] = manifest.get(taskname, {})
+                if isinstance(taskdef, list):
+                    taskdef = envdef[taskname] = { 'commands': taskdef }
                 elif isinstance(taskdef, str):
-                    taskdef = appdef[taskname] = { 'task': taskdef }
+                    taskdef = envdef[taskname] = { 'task': taskdef }
                 elif not isinstance(taskdef, dict):
-                    m = 'Error: application "{0}": key "{1}" must be list, ' \
-                        'str or dict.'
+                    m = 'Error: environment "{0}": key "{1}" must be list, ' \
+                          'str or dict.'
                     self.error(m.format(name, taskname))
                     self.exit(1)
-        # Merge in default settings
+        # Merge defaults into environments
         language = manifest['language']
-        defaults = self.default_manifest.get('defaults', {})
-        language_defaults = self.default_manifest.get('language_defaults', {}) \
+        defaults = manifest.get('defaults', {})
+        language_defaults = manifest.get('language_defaults', {}) \
                                     .get(language, {})
-        for name,appdef in list(manifest['applications'].items()):
-            util.merge(appdef, language_defaults)
-            util.merge(appdef, defaults)
-        # Insert global defaults
-        for name,appdef in list(manifest['applications'].items()):
-            for taskname in DEFAULT_TASKS:
-                taskdef = appdef.get(taskname)
-                taskdef.setdefault('task', 'testmill.run:Task')
-                taskdef.setdefault('local', False)
-                taskdef.setdefault('sudo', False)
+        for name in manifest['environments']:
+            util.merge(manifest[name], language_defaults)
+            util.merge(manifest[name], defaults)
+            if self.args.command:
+                manifest[name]['execute']['commands'] = [self.args.command]
 
     def check_referenced_entities_in_manifest(self, manifest):
         """Check the manifest to make sure all referenced entities exist."""
-        for name,appdef in manifest['applications'].items():
-            vmname = appdef['vm']
+        for name in manifest['environments']:
+            envdef = manifest[name]
+            vmname = envdef['vm']
             image = self.get_image(name=vmname)
             if image is None:
-                m = "Error: Unknown vm '{0}' in application '{1}'"
+                m = "Error: Unknown vm '{0}' in environment '{1}'"
                 self.error(m.format(vmname, name))
                 self.exit(1)
-            appname = appdef.get('application')
-            if appname is not None:
-                app = self.get_application(name=appname)
-                if app is None:
-                    m = 'Error: application "{0}": unknown application: {1}'
-                    self.error(m.format(name, appname))
-                    self.exit(1)
-            bpname = appdef.get('blueprint')
+            bpname = envdef.get('blueprint')
             if bpname is not None:
                 bp = self.get_blueprint(name=bpname)
                 if bp is None:
-                    m = 'Error: application "{0}": unknown blueprint: {1}'
-                    self.error(m.format(name, bpname))
+                    m = "Error: Unknown blueprint '{0}' in environment '{1}'"
+                    self.error(m.format(bpname, name))
                     self.exit(1)
-            for taskname,taskdef in appdef.items():
+            for taskname,taskdef in envdef.items():
                 if isinstance(taskdef, dict) and 'task' in taskdef:
                     if not util.load_class(taskdef['task']):
-                        m = "Error: application '{0}': task '{1}' not found."
-                        self.error(m.format(name, taskdef['task']))
+                        m = "Error: task class '{0}' not found in {1}/{2}"
+                        self.error(m.format(taskdef['task']), name, taskname)
                         self.exit(1)
 
     VM_STATE_PREFERENCES = ['STARTED', 'STARTING', 'STOPPED', 'PUBLISHING']
 
-    def _reuse_single_vm_application(self, appdef):
+    def _reuse_single_vm_application(self, envdef):
         """Try to re-use a single VM application."""
-        image = self.get_image(name=appdef['vm'])
+        image = self.get_image(name=envdef['vm'])
         candidates = []
         for app in self.applications:
             base, suffix = util.splitname(app['name'])
-            if base != appdef['name'] or not suffix:
+            if base != envdef['name'] or not suffix:
                 continue
             app = self.get_full_application(app['id'])
             vms = app['applicationLayer']['vm']
@@ -453,43 +458,43 @@ class RunCommand(main.SubCommand):
         candidates.sort(key=lambda x: self.VM_STATE_PREFERENCES.index(x[0]))
         state, app, vm = candidates[0]
         m = 'Re-using {0} application "{1}" for "{2}"'
-        self.info(m.format(state.lower(), app['name'], appdef['name']))
+        self.info(m.format(state.lower(), app['name'], envdef['name']))
         if state == 'STOPPED':
             self.api.start_vm(app, vm)
         return app['id']
 
-    def _create_new_single_vm_application(self, appdef):
+    def _create_new_single_vm_application(self, envdef):
         """Create a new single VM application."""
-        image = self.get_image(name=appdef['vm'])
+        image = self.get_image(name=envdef['vm'])
         image = self.get_full_image(image['id'])
         vm = ravello.update_luids(image)
         vm['customVmConfigurationData'] = { 'keypair': self.pubkey }
         app = ravello.Application()
-        name = util.get_unused_name(appdef['name'], self.applications)
+        name = util.get_unused_name(envdef['name'], self.applications)
         app['name'] = name
         app['applicationLayer'] = { 'vm': [ vm ] }
         app = self.api.create_application(app)
         self.api.publish_application(app)
         self.get_full_application(app['id'], force_reload=True)
         m = 'Created new application "{0}" for "{1}"'
-        self.info(m.format(app['name'], appdef['name']))
+        self.info(m.format(app['name'], envdef['name']))
         return app['id']
 
     def start_applications(self, manifest):
         """Start up all applications."""
         appmap = {}  # { appid: manifest_name }
-        for name,appdef in manifest['applications'].items():
-            vmname = appdef['vm']
-            appname = appdef.get('application')
-            bpname = appdef.get('blueprint')
-            if appname is None and bpname is None:
+        for name in manifest['environments']:
+            envdef = manifest[name]
+            vmname = envdef['vm']
+            bpname = envdef.get('blueprint')
+            if bpname is None:
                 appid = None
                 if not self.args.new:
-                    appid = self._reuse_single_vm_application(appdef)
+                    appid = self._reuse_single_vm_application(envdef)
                 if appid is None:
-                    appid = self._create_new_single_vm_application(appdef)
+                    appid = self._create_new_single_vm_application(envdef)
             else:
-                # TODO: applications and blueprints
+                # TODO: blueprints
                 continue
             appmap[appid] = name
         return appmap
@@ -619,10 +624,9 @@ class RunCommand(main.SubCommand):
         fab.env.vmmap = vmmap
         fab.env.addrmap = addrmap
         fab.env.hosts = list(addrmap)
-        # TODO: change to use pubkey based authentication
         fab.env.user = 'ravello'
-        fab.env.password = 'ravelloCloud'
         fab.env.key_filename = self.privkey_file
+        fab.env.warn_only = self.args.continue_
         # Suppress output for most actions
         fab.env.output_prefix = self.args.debug
         fabric.state.output.running = self.args.debug
@@ -668,13 +672,12 @@ class RunCommand(main.SubCommand):
         if args.dump:
             util.pprint(manifest)
             self.exit(0)
-        if args.applications:
-            apps = [app.lower() for app in args.applications.split(',')]
-            for name in list(manifest['applications']):
-                if name.lower() not in apps:
-                    del manifest['applications'][name]
-        if not manifest['applications']:
-            self.error('No applications defined, exiting.')
+        if args.environments:
+            envs = [env.lower() for env in args.environments.split(',')]
+            manifest['environments'] = [env for env in manifest['environments']
+                                        if env.lower() in envs]
+        if not manifest['environments']:
+            self.error('No environments defined, exiting.')
             self.exit(1)
 
         # Load images, applications and blueprints
@@ -684,8 +687,8 @@ class RunCommand(main.SubCommand):
         self.check_referenced_entities_in_manifest(manifest)
 
         # Ready to go...
-        appnames = ', '.join(manifest['applications'])
-        self.info('Environments to run: {0}'.format(appnames))
+        names = ', '.join(manifest['environments'])
+        self.info('Environments to run: {0}'.format(names))
 
         # Ensure we have a keypair
         self.check_keypair()
@@ -716,12 +719,12 @@ class RunCommand(main.SubCommand):
 
         # The main command is run serially so that we can show output in a
         # sensible way.
-        self.info('Executing command: {0}\n'.format(args.command))
         fabric.state.output.output = True
         for host in fab.env.hosts:
             name = appmap[vmmap[addrmap[host]]]
-            self.write("== Output for '{0}' on '{1}'\n".format(args.command, name))
             task = get_task('execute', manifest, host)
+            m = "\n== Output for '{0}' on '{1}:'\n"
+            self.write(m.format(task.commands[0], name))
             fabric.tasks.execute(task, hosts=[host])
             self.write('')
 
