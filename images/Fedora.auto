@@ -3,7 +3,7 @@ text
 keyboard us
 lang en_US.UTF-8
 skipx
-network --device eth0 --bootproto dhcp
+network --device eth0 --bootproto dhcp --hostname fedora --noipv6
 rootpw %ROOTPW%
 firewall --disabled
 authconfig --enableshadow --enablemd5
@@ -34,20 +34,27 @@ cp /etc/resolv.conf /mnt/sysimage/etc
 %post
 exec >/dev/tty6 2>&1
 
-yum -y update
+# Temporary hack for bug in HVX with kernel 3.6
+if [ "`rpm -q --qf '%{version}' fedora-release`" = "17" ]; then
+    yum --exclude=kernel\* -y update
+else
+    yum -y update
+fi
 yum -y install cloud-init
 passwd -l root
 useradd -m ravello -p PWjhvSeSjMdYI
 gpasswd -a ravello wheel
-sed -i -e "s/^HOSTNAME=.*$/HOSTNAME=Fedora/" /etc/sysconfig/network
 sed -i -e "s/^PasswordAuthentication .*$/#&/" \
-        -e "$ a PasswordAuthentication no" /etc/ssh/sshd_config
+        -e "$ a PasswordAuthentication no" \
+        /etc/ssh/sshd_config
 sed -i -e "s/^%wheel.*$/#&/" \
         -e "$ a %wheel ALL=(ALL) NOPASSWD: ALL" \
         /etc/sudoers
-sed -i -e "/^HWADDR=/d" /etc/sysconfig/network-scripts/ifcfg-eth0
+sed -i -e "/^HWADDR=/d" \
+        /etc/sysconfig/network-scripts/ifcfg-eth0
 rm -f /var/lib/dhclient/*
 sed -i -e "s/^user:.*$/#&/" \
+        -e "s/^datasource_list.*$/#&/" \
         -e "$ a user: ravello\ndatasource_list: [ NoCloud ]" \
         /etc/cloud/cloud.cfg
 %end
