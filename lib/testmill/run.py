@@ -38,6 +38,11 @@ import fabric.state
 import fabric.network
 from fabric import api as fab
 
+if not sys.platform.startswith('win'):
+    EINPROGRESS = errno.EINPROGRESS
+else:
+    EINPROGRESS = errno.WSAEWOULDBLOCK
+
 
 DEFAULT_MANIFEST = textwrap.dedent("""\
     defaults:
@@ -570,7 +575,7 @@ class RunCommand(main.SubCommand):
                 try:
                     sock.connect((addr, 22))
                 except socket.error as e:
-                    if e.errno != errno.EINPROGRESS:
+                    if e.errno != EINPROGRESS:
                         self.error('connect(): errno {0.errno}'.format(e))
                         raise
                 waitfds[sock.fileno()] = (sock, addr)
