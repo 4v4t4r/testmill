@@ -21,6 +21,7 @@
     <package name="automake"/>
     <package name="libtool"/>
     <package name="gdb"/>
+    <package name="pkg-config"/>
     <!-- Version control -->
     <package name="git"/>
     <package name="mercurial"/>

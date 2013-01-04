@@ -21,6 +21,7 @@
     <package name="automake"/>
     <package name="libtool"/>
     <package name="gdb"/>
+    <package name="pkg-config"/>
     <!-- Version control -->
     <package name="git"/>
     <package name="mercurial"/>
@@ -52,5 +53,6 @@
   <commands>
     <command name="install_pip3">easy_install3 pip==1.2.1</command>
     <command name="link_pip3">ln -s pip-3.2 /usr/local/bin/pip3</command>
+    <command name="make_pip2_default">rm /usr/local/bin/pip</command>
   </commands>
 </template>
