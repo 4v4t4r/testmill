@@ -150,7 +150,7 @@ class CopyTask(Task):
 
     def run(self):
         fab.run('mkdir %s' % fab.env.DISTBASE)
-        fab.put('%s/*' % fab.env.DISTDIR, fab.env.DISTBASE)
+        fab.put(fab.env.DISTDIR)
         fab.env.cwd = fab.env.DISTBASE
 
 
