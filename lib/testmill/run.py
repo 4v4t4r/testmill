@@ -362,7 +362,7 @@ class RunCommand(main.SubCommand):
         if not language:
             language = self._detect_language()
             if language is not None:
-                self.info('Detected a "{0}" project.'.format(language))
+                self.info('Detected a {0} project.'.format(language.title()))
             manifest['language'] = language
         elif language not in self.default_manifest.get('language_defaults', {}):
             m = 'Warning: unknown language "{0}" specified in manifest.'
