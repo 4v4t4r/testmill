@@ -217,7 +217,7 @@ class RunCommand(main.SubCommand):
 
     name = 'run'
     usage = textwrap.dedent("""\
-            usage: rtm run <command>
+            usage: ravtest run <command>
             """)
     description = textwrap.dedent("""\
             Run a command in one or more Ravello applications.  The
