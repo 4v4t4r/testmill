@@ -48,8 +48,8 @@
     <package name="apache-ivy"/>
   </packages>
   <commands>
-    <command name="link_pip">ln -s pip-python /bin/pip</command>
-    <command name="link_pip3">ln -s pip-python3 /bin/pip3</command>
-    <command name="link_easy_install3">ln -s easy_install-3.2 /bin/easy_install3</command>
+    <command name="link_pip">ln -s pip-python /usr/bin/pip</command>
+    <command name="link_pip3">ln -s pip-python3 /usr/bin/pip3</command>
+    <command name="link_easy_install3">ln -s easy_install-3.2 /usr/bin/easy_install3</command>
   </commands>
 </template>
