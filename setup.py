@@ -17,7 +17,7 @@ from setuptools import setup
 
 version_info = {
     'name': 'ravello-testmill',
-    'version': '0.1',
+    'version': '0.8',
     'description': 'A system test driver for Ravello',
     'author': 'Geert Jansen',
     'author_email': 'geert.jansen@ravellosystems.com',
