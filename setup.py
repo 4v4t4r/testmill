@@ -31,7 +31,6 @@ version_info = {
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.2',
         'Programming Language :: Python :: 3.3'
     ]
 }
@@ -40,7 +39,7 @@ version_info = {
 setup(
     package_dir = { '': 'lib' },
     packages = ['testmill'],
-    install_requires = ['fabric', 'pyyaml'],
+    install_requires = ['fabric>=1.4.1', 'pyyaml'],
     entry_points = {
         'console_scripts': ['ravtest = testmill.main:main']
     },
