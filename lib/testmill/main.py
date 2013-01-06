@@ -74,6 +74,11 @@ class MainCommand(command.CommandBase):
         parser.add_argument('-d', '--debug', action='store_true')
         parser.add_argument('-y', '--yes', action='store_true')
 
+    def parse_args(self, args=None, defaults=None):
+        if sys.platform.startswith('win'):
+            sys.argv[0] = sys.argv[0][:-10]
+        super(MainCommand, self).parse_args(args, defaults)
+
 
 class SubCommand(command.CommandBase):
     """Base class for sub-commands.
