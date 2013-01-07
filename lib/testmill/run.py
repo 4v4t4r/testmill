@@ -732,7 +732,7 @@ class RunCommand(main.SubCommand):
         for host in fab.env.hosts:
             name = appmap[vmmap[addrmap[host]]]
             task = get_task('execute', manifest, host)
-            m = "\n== Output for '{0}' on '{1}:'\n"
+            m = "\n== Output for '{0}' on '{1}':\n"
             self.write(m.format(task.commands[0], name))
             fabric.tasks.execute(task, hosts=[host])
             self.write('')
