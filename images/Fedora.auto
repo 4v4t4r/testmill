@@ -53,6 +53,7 @@ sed -i -e "s/^%wheel.*$/#&/" \
 sed -i -e "/^HWADDR=/d" \
         -e "/^UUID=/d" \
         /etc/sysconfig/network-scripts/ifcfg-eth0
+rm -f /lib/udev/rules.d/71-biosdevname.rules
 rm -f /var/lib/dhclient/*
 sed -i -e "s/^user:.*$/#&/" \
         -e "s/^datasource_list.*$/#&/" \
