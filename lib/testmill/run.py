@@ -398,7 +398,10 @@ class RunCommand(main.SubCommand):
             for taskname in DEFAULT_TASKS:
                 taskdef = envdef.get(taskname)
                 if taskdef is None:
-                    taskdef = envdef[taskname] = manifest.get(taskname, {})
+                    taskdef = manifest.get(taskname, {})
+                    if name in taskdef:
+                        taskdef = taskdef[name]
+                    envdef[taskname] = taskdef
                 if isinstance(taskdef, list):
                     taskdef = envdef[taskname] = { 'commands': taskdef }
                 elif isinstance(taskdef, str):
