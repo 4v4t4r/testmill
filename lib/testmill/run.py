@@ -23,6 +23,7 @@ import getpass
 import textwrap
 import tempfile
 import subprocess
+import hashlib
 import socket
 import select
 import errno
@@ -173,12 +174,16 @@ class SysinitTask(Task):
     """
 
     def run(self):
-        ret = fab.run('test -f ~/%s.done' % self.name,
-                      warn_only=True, quiet=True)
+        md = hashlib.sha1()
+        for cmd in self.commands:
+            md.update(cmd + '\000')
+        token = md.hexdigest()
+        name = '~/sysinit-%s.done' % token
+        ret = fab.run('test -f {0}'.format(name), warn_only=True, quiet=True)
         if ret.succeeded:
             return
         super(SysinitTask, self).run(sudo=True)
-        fab.run('touch ~/%s.done' % self.name)
+        fab.run('touch {0}'.format(name))
 
 
 class PrepareTask(Task):
