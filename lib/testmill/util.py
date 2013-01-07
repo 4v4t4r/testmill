@@ -25,7 +25,7 @@ def pprint(obj):
     print(json.dumps(obj, sort_keys=True, indent=2))
 
 
-def splitname(name, sep='.'):
+def splitname(name, sep=':'):
     """Split a name into its base and a suffix."""
     pos = name.rfind(sep)
     if pos != -1:
@@ -34,7 +34,7 @@ def splitname(name, sep='.'):
         return name, ''
 
 
-def get_unused_name(name, current, sep='.'):
+def get_unused_name(name, current, sep=':'):
     """Get a new, unused name."""
     used = set()
     for obj in current:
@@ -50,7 +50,7 @@ def get_unused_name(name, current, sep='.'):
 
 def load_class(name):
     """Load a class specifies as package:ClassName."""
-    pkg, cls = splitname(name, ':')
+    pkg, cls = splitname(name)
     try:
         mod = __import__(pkg)
         for subpkg in pkg.split('.')[1:]:

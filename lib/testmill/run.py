@@ -318,7 +318,7 @@ class RunCommand(main.SubCommand):
             keyparts[2:] = [keyname]
         # Create the pubkey in the API under a unique name
         pubkeys = self.api.get_pubkeys()
-        keyname = util.get_unused_name(keyname, pubkeys, sep=':')
+        keyname = util.get_unused_name(keyname, pubkeys)
         keyparts[2] = keyname
         keydata = '{0} {1} {2}\n'.format(*keyparts)
         pubkey = ravello.Pubkey(name=keyname)
