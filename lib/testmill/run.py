@@ -67,10 +67,12 @@ DEFAULT_MANIFEST = textwrap.dedent("""\
         python:
             pack:
                 commands:
-                - "python setup.py sdist --dist-dir {env.DISTDIR}"
+                - "rm -f dist/*; python setup.py sdist"
+            copy:
+                distdir: dist
             unpack:
                 commands:
-                - "mkdir dist && mv *.tar.gz dist && tar xvfz dist/*.tar.gz --strip-components=1"
+                - "tar xvfz dist/*.tar.gz --strip-components=1"
             prepare:
                 commands:
                 - "test -f requirements.txt && sudo pip install -r requirements.txt || true; python setup.py build"
@@ -95,7 +97,7 @@ def get_task(name, manifest, host):
     cls = util.load_class(taskdef.pop('task'))
     if not cls:
         return
-    task = cls(name, manifest, **taskdef)
+    task = cls(name=name, manifest=manifest, **taskdef)
     return task
 
 def run_task(name, manifest):
@@ -148,10 +150,15 @@ class PackTask(Task):
 class CopyTask(Task):
     """Copy the local contents from env.DISTDIR."""
 
+    def __init__(self, distdir=None, **kwargs):
+        super(CopyTask, self).__init__(**kwargs)
+        self.distdir = distdir
+
     def run(self):
-        fab.run('mkdir %s' % fab.env.DISTBASE)
-        fab.put(fab.env.DISTDIR)
-        fab.env.cwd = fab.env.DISTBASE
+        fab.run('mkdir %s' % fab.env.DISTDIR)
+        if self.distdir is not None:
+            fab.put(self.distdir, fab.env.DISTDIR)
+        fab.env.cwd = fab.env.DISTDIR
 
 
 class UnpackTask(Task):
@@ -638,12 +645,8 @@ class RunCommand(main.SubCommand):
         fabric.state.output.output = self.args.debug
         fabric.state.output.status = self.args.debug
         fab.env.COMMAND = self.args.command
-        # Create distribution directories.
-        tmpdir = tempfile.mkdtemp()
-        distbase = os.urandom(16).encode('hex')
-        distdir = os.path.join(tmpdir, distbase)
-        os.makedirs(distdir)
-        fab.env.DISTBASE = distbase
+        # Remote distribution directory.
+        distdir = os.urandom(16).encode('hex')
         fab.env.DISTDIR = distdir
         # Export API (for shutdown)
         fab.env.API_URL = self.api.url
@@ -721,7 +724,7 @@ class RunCommand(main.SubCommand):
         init_actions = ('renew', 'sysinit', 'copy', 'unpack', 'prepare')
         fabric.tasks.execute(run_tasks, init_actions, manifest)
         # Communicate new working directory..
-        fab.env.cwd = fab.env.DISTBASE
+        fab.env.cwd = fab.env.DISTDIR
 
         # The main command is run serially so that we can show output in a
         # sensible way.
