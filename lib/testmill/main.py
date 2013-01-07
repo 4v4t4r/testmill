@@ -175,7 +175,9 @@ class SubCommand(command.CommandBase):
             raise ValueError('Specify either "id" or "name".')
         for img in self.images:
             if name is not None:
-                if name.lower() == img['name'].lower():
+                name1 = 'testmill:{0}'.format(name.lower()) \
+                            if img['public'] else name.lower()
+                if name1 == img['name'].lower():
                     return img
             elif id is not None:
                 if img['id'] == id:
