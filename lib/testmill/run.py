@@ -647,6 +647,7 @@ class RunCommand(main.SubCommand):
         fab.env.hosts = list(addrmap)
         fab.env.user = 'ravello'
         fab.env.key_filename = self.privkey_file
+        fab.env.disable_known_hosts = True
         fab.env.warn_only = self.args.continue_
         # Suppress output for most actions
         fab.env.output_prefix = self.args.debug
