@@ -31,16 +31,16 @@ def random_luid():
 
 def update_luids(obj):
     """Update local UIDs on `obj'. NOTE: updates the object in-place!"""
-    global _luid
-    for key in obj:
-        value = obj[key]
-        if key == 'id':
-            obj['id'] = random_luid()
-        elif isinstance(value, dict):
-            update_luids(value)
-        elif isinstance(value, list):
-            for elem in value:
-                update_luids(elem)
+    if isinstance(obj, dict):
+        for key in obj:
+            value = obj[key]
+            if key == 'id':
+                obj['id'] = random_luid()
+            elif isinstance(value, dict) or isinstance(value, list):
+                update_luids(value)
+    elif isinstance(obj, list):
+        for elem in obj:
+            update_luids(elem)
     return obj
 
 
