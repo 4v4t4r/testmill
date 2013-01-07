@@ -65,3 +65,8 @@ sed -i -e "s/^user:.*$/#&/" \
         -e "s/^datasource_list.*$/#&/" \
         -e "$ a user: ravello\ndatasource_list: [ NoCloud ]" \
         /etc/cloud/cloud.cfg
+
+for i in abrt-ccpp abrt-oops abrtd auditd cpuspeed haldaemon ip6tables \
+        irqbalance kdump lvm2-monitor netfs sysstat; do
+    chkconfig $i off;
+done
