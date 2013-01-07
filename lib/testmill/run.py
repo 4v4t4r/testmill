@@ -444,6 +444,7 @@ class RunCommand(main.SubCommand):
                         self.exit(1)
 
     VM_STATE_PREFERENCES = ['STARTED', 'STARTING', 'STOPPED', 'PUBLISHING']
+    VM_REUSE_STATES = ['PUBLISHING', 'STARTING', 'STARTED', 'STOPPED']
 
     def _reuse_single_vm_application(self, envdef):
         """Try to re-use a single VM application."""
@@ -461,7 +462,7 @@ class RunCommand(main.SubCommand):
             if vm['shelfVmId'] != image['id']:
                 continue
             state = vm['dynamicMetadata']['state']
-            if state not in ('PUBLISHING', 'STARTING', 'STARTED', 'STOPPED'):
+            if state not in self.VM_REUSE_STATES:
                 continue
             userdata = vm['customVmConfigurationData']
             if not userdata:
@@ -516,10 +517,11 @@ class RunCommand(main.SubCommand):
             appmap[appid] = name
         return appmap
 
+    VM_WAIT_STATES = ['PUBLISHING', 'STARTING', 'STARTED']
+
     def wait_until_applications_are_up(self, appmap, timeout, poll_timeout):
         """Wait until all the application are started."""
         end_time = time.time() + timeout
-        states = [ 'PUBLISHING', 'STARTING', 'STARTED' ]
         vmmap = {}  # { vmid: appid }
         addrmap = {}  # { host_or_ip: vmid }
         waitapps = set(appmap)
@@ -527,16 +529,17 @@ class RunCommand(main.SubCommand):
             if time.time() > end_time:
                 break
             self.reload_cache(applications=True)
-            min_state = 2
+            min_state = 3
             for appid in list(waitapps):  # updating
                 app = self.get_application(appid)
-                app_min_state = 2
+                app_min_state = 3
                 for status in app['cloudVmsStatusCounters']:
                     state = status['status']
-                    if state in states:
-                        state = states.index(state)
-                    else:
-                        state = -1
+                    try:
+                        state = self.VM_WAIT_STATES.index(state)
+                    except ValueError:
+                        waitapps.remove(appid)
+                        state = 3
                     app_min_state = min(app_min_state, state)
                 if app_min_state == 2:
                     # Update application state here. This way we can do it
@@ -550,9 +553,7 @@ class RunCommand(main.SubCommand):
                 min_state = min(min_state, app_min_state)
             if not waitapps:
                 break
-            if min_state == -1:
-                self.progress('?')
-            elif min_state == 0:
+            if min_state == 0:
                 self.progress('P')
             elif min_state == 1:
                 self.progress('S')
