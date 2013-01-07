@@ -59,4 +59,6 @@ sed -i -e "s/^user:.*$/#&/" \
         -e "s/^datasource_list.*$/#&/" \
         -e "$ a user: ravello\ndatasource_list: [ NoCloud ]" \
         /etc/cloud/cloud.cfg
+sed -i -e "/\[Unit\]/ a Before=sshd.service" \
+        /lib/systemd/system/cloud-init.service
 %end
