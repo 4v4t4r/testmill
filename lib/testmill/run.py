@@ -552,7 +552,7 @@ class RunCommand(main.SubCommand):
             m = 'Error: Could not start {0} out of {1} applications.'
             self.error(m.format(len(waitapps), len(appmap)))
             failed = ', '.join([appmap[appid] for appid in waitapps])
-            m = 'Continue with failed applications: {0}'
+            m = 'Continue without failed applications: {0}'
             self.info(m.format(failed))
         return vmmap, addrmap
 
@@ -617,7 +617,7 @@ class RunCommand(main.SubCommand):
                 time.sleep(timeout)
         if len(alive) != len(addrmap):
             m = 'Error: Could not start {0} out of {1} applications.'
-            self.error(m.format(len(addrs)-len(alive), len(addrs)))
+            self.error(m.format(len(addrmap)-len(alive), len(addrmap)))
         elif len(alive) == 0:
             self.error('Error: no VM came up, exiting')
             self.exit(1)
@@ -703,9 +703,10 @@ class RunCommand(main.SubCommand):
 
         # Wait until the applications are up.. And show some progress.
         vmmap, addrmap = self.wait_until_applications_are_up(appmap, 600, 10)
-        self.wait_until_vms_accept_ssh(addrmap, 300, 5)
+        alive = self.wait_until_vms_accept_ssh(addrmap, 300, 5)
         if hasattr(self, 'progress_bar_started'):
             self.progress(' DONE\n')
+        addrmap = dict(((addr, addrmap[addr]) for addr in alive))
 
         # Now run the tasks...
         self.setup_fabric_environment(appmap, vmmap, addrmap)
