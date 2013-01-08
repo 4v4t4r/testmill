@@ -70,7 +70,7 @@ DEFAULT_MANIFEST = textwrap.dedent("""\
                 commands:
                 - "rm -f dist/*; python setup.py sdist"
             copy:
-                distdir: dist
+                basedir: dist
             unpack:
                 commands:
                 - "tar xvfz dist/*.tar.gz --strip-components=1"
@@ -142,24 +142,28 @@ class RenewTask(Task):
 
 
 class PackTask(Task):
-    """Pack the project to {env.DISTDIR}."""
+    """Pack the project."""
 
     def run(self):
         super(PackTask, self).run(local=True)
 
 
 class CopyTask(Task):
-    """Copy the local contents from env.DISTDIR."""
+    """Copy the local contents to remote."""
 
-    def __init__(self, distdir=None, **kwargs):
+    def __init__(self, files=None, **kwargs):
         super(CopyTask, self).__init__(**kwargs)
-        self.distdir = distdir
+        if files is None:
+            files = []
+        elif not isinstance(files, list):
+            files = [files]
+        self.files = files
 
     def run(self):
-        fab.run('mkdir %s' % fab.env.DISTDIR)
-        if self.distdir is not None:
-            fab.put(self.distdir, fab.env.DISTDIR)
-        fab.env.cwd = fab.env.DISTDIR
+        fab.run('mkdir %s' % fab.env.BASEDIR)
+        for glob in self.files:
+            fab.put(glob, fab.env.BASEDIR)
+        fab.env.cwd = fab.env.BASEDIR
 
 
 class UnpackTask(Task):
@@ -656,8 +660,8 @@ class RunCommand(main.SubCommand):
         fabric.state.output.status = self.args.debug
         fab.env.COMMAND = self.args.command
         # Remote distribution directory.
-        distdir = os.urandom(16).encode('hex')
-        fab.env.DISTDIR = distdir
+        basedir = os.urandom(16).encode('hex')
+        fab.env.BASEDIR = basedir
         # Export API (for shutdown)
         fab.env.API_URL = self.api.url
         fab.env.API_COOKIE = self.api._cookie
@@ -734,7 +738,7 @@ class RunCommand(main.SubCommand):
         init_actions = ('renew', 'sysinit', 'copy', 'unpack', 'prepare')
         fabric.tasks.execute(run_tasks, init_actions, manifest)
         # Communicate new working directory..
-        fab.env.cwd = fab.env.DISTDIR
+        fab.env.cwd = fab.env.BASEDIR
 
         # The main command is run serially so that we can show output in a
         # sensible way.
