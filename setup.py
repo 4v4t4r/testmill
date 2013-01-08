@@ -43,5 +43,8 @@ setup(
     entry_points = {
         'console_scripts': ['ravtest = testmill.main:main']
     },
+    package_data = {
+        'testmill': ['*.yml']
+    },
     **version_info
 )

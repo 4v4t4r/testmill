@@ -44,58 +44,6 @@ if not sys.platform.startswith('win'):
 else:
     EINPROGRESS = errno.WSAEWOULDBLOCK
 
-
-DEFAULT_MANIFEST = textwrap.dedent("""\
-    defaults:
-        keep: 90
-        renew:
-            task: testmill.run:RenewTask
-        pack:
-            task: testmill.run:PackTask
-        copy:
-            task: testmill.run:CopyTask
-        unpack:
-            task: testmill.run:UnpackTask
-        sysinit:
-            task: testmill.run:SysinitTask
-        prepare:
-            task: testmill.run:PrepareTask
-        execute:
-            task: testmill.run:ExecuteTask
-        cleanup:
-            task: testmill.run:CleanupTask
-    language_defaults:
-        python:
-            pack:
-                commands:
-                - "rm -f dist/*; python setup.py sdist"
-            copy:
-                basedir: dist
-            unpack:
-                commands:
-                - "tar xvfz dist/*.tar.gz --strip-components=1"
-            prepare:
-                commands:
-                - "test -f requirements.txt && sudo pip install -r requirements.txt || true; python setup.py build"
-            execute:
-                commands:
-                - "python setup.py test"
-        clojure:
-            pack:
-                commands:
-                - "mkdir -p dist; tar cfvz dist/ravello-dist.tar.gz . --exclude dist --exclude target --exclude lib --exclude doc --exclude pkg"
-            copy:
-              files: dist/ravello-dist.tar.gz
-            unpack:
-                commands:
-                - "tar xvfz ravello-dist.tar.gz; rm -f ravello-dist.tar.gz"
-            execute:
-                commands:
-                - "lein test"
-    language: null
-    environments: []
-""")
-
 DEFAULT_TASKS = frozenset(('pack', 'renew', 'sysinit', 'copy', 'unpack',
         'prepare', 'execute', 'cleanup'))
 
@@ -372,7 +320,10 @@ class RunCommand(main.SubCommand):
                 self.error('Message from parser: {0!s}'.format(e))
                 self.exit(1)
         self.manifest = manifest
-        self.default_manifest = yaml.load(DEFAULT_MANIFEST)
+        dirname, rest = os.path.split(__file__)
+        ymlfile = os.path.join(dirname, 'defaults.yml')
+        with file(ymlfile) as fin:
+            self.default_manifest = yaml.load(fin)
         return manifest
 
     def _detect_language(self):
