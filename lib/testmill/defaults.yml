@@ -50,5 +50,31 @@ language_defaults:
       commands:
       - "lein test"
 
+  java_maven:
+    pack:
+      commands:
+      - "mkdir -p dist; tar cfvz dist/ravello-dist.tar.gz . --exclude dist --exclude target"
+    copy:
+      files: dist/ravello-dist.tar.gz
+    unpack:
+      commands:
+      - "tar xvfz ravello-dist.tar.gz; rm -f ravello-dist.tar.gz"
+    execute:
+      commands:
+      - "mvn test"
+
+  java_ant:
+    pack:
+      commands:
+      - "mkdir -p dist; tar cfvz dist/ravello-dist.tar.gz . --exclude dist --exclude target"
+    copy:
+      files: dist/ravello-dist.tar.gz
+    unpack:
+      commands:
+      - "tar xvfz ravello-dist.tar.gz; rm -f ravello-dist.tar.gz"
+    execute:
+      commands:
+      - "ant test"
+
 language: null
 environments: []

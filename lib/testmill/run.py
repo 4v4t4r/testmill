@@ -336,6 +336,10 @@ class RunCommand(main.SubCommand):
                 return 'python'
             elif fname == 'project.clj':
                 return 'clojure'
+            elif fname == 'pom.xml':
+                return 'java_maven'
+            elif fname == 'build.xml':
+                return 'java_ant'
 
     def detect_language(self, manifest):
         """Detect the language of a project in the current working directory."""
@@ -343,7 +347,8 @@ class RunCommand(main.SubCommand):
         if not language:
             language = self._detect_language()
             if language is not None:
-                self.info('Detected a {0} project.'.format(language.title()))
+                pretty = '/'.join((l.title() for l in language.split('_')))
+                self.info('Detected a {0} project.'.format(pretty))
             manifest['language'] = language
         elif language not in self.default_manifest.get('language_defaults', {}):
             m = 'Warning: unknown language "{0}" specified in manifest.'
