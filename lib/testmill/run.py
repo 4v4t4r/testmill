@@ -80,6 +80,18 @@ DEFAULT_MANIFEST = textwrap.dedent("""\
             execute:
                 commands:
                 - "python setup.py test"
+        clojure:
+            pack:
+                commands:
+                - "mkdir -p dist; tar cfvz dist/ravello-dist.tar.gz . --exclude dist --exclude target --exclude lib --exclude doc --exclude pkg"
+            copy:
+              files: dist/ravello-dist.tar.gz
+            unpack:
+                commands:
+                - "tar xvfz ravello-dist.tar.gz; rm -f ravello-dist.tar.gz"
+            execute:
+                commands:
+                - "lein test"
     language: null
     environments: []
 """)
@@ -371,6 +383,8 @@ class RunCommand(main.SubCommand):
         for fname in contents:
             if fname == 'setup.py':
                 return 'python'
+            elif fname == 'project.clj':
+                return 'clojure'
 
     def detect_language(self, manifest):
         """Detect the language of a project in the current working directory."""
