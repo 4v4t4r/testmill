@@ -51,5 +51,8 @@
     <command name="link_pip">ln -s pip-python /bin/pip</command>
     <command name="link_pip3">ln -s pip-python3 /bin/pip3</command>
     <command name="link_easy_install3">ln -s easy_install-3.2 /bin/easy_install3</command>
+    <command name="download_lein">curl https://raw.github.com/technomancy/leiningen/preview/bin/lein -o /usr/bin/lein</command>
+    <command name="chmod_lein">chmod 755 /usr/bin/lein</command>
+    <command name="install_lein">sudo -u ravello /usr/bin/lein</command>
   </commands>
 </template>
