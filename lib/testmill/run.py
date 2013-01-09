@@ -507,7 +507,7 @@ class RunCommand(main.SubCommand):
                 break
             min_state = 3
             for appid in list(waitapps):  # updating
-                app = self.get_full_application(appid)
+                app = self.get_full_application(appid, force_reload=True)
                 app_min_state = 3
                 for status in app['cloudVmsStatusCounters']:
                     state = status['status']
