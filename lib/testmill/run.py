@@ -505,10 +505,9 @@ class RunCommand(main.SubCommand):
         while True:
             if time.time() > end_time:
                 break
-            self.reload_cache(applications=True)
             min_state = 3
             for appid in list(waitapps):  # updating
-                app = self.get_application(appid)
+                app = self.get_full_application(appid)
                 app_min_state = 3
                 for status in app['cloudVmsStatusCounters']:
                     state = status['status']
@@ -519,9 +518,6 @@ class RunCommand(main.SubCommand):
                         state = 3
                     app_min_state = min(app_min_state, state)
                 if app_min_state == 2:
-                    # Update application state here. This way we can do it
-                    # while we are waiting anyway.
-                    app = self.get_full_application(appid, force_reload=True)
                     for vm in app['applicationLayer']['vm']:
                         addr = vm['dynamicMetadata']['externalIp']
                         addrmap[addr] = vm['id']

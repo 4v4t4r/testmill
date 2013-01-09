@@ -35,15 +35,14 @@ class PsCommand(main.SubCommand):
         self.write('Currently published applications:')
         for app in sorted(apps, key=lambda x: x['name']):
             name = app['name']
-            total = app.get('numPublishedVms', 0)
-            if not total:
-                continue
+            app = self.api.get_application(app['id'])
             cloud = app['cloud']
             region = app['regionName']
-            started = 0
+            started = total = 0
             for stat in app.get('cloudVmsStatusCounters'):
                 if stat['status'] == 'STARTED':
                     started += stat['cloudWithDesignVmCounter']
+                total += stat['cloudWithDesignVmCounter']
             if started:
                 tm = time.localtime(app['publishStartTime'] / 1000)
                 starttime = time.strftime('%Y/%m/%d %H:%M:%S', tm)
