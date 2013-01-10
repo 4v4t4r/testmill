@@ -132,3 +132,14 @@ class CommandBase(object):
                 break
         else:
             self.error('Error: no such command: %s' % command)
+
+    def main(self, argv=None):
+        """Main entry point."""
+        try:
+            self.parse_args(argv)
+            status = self.run(self.args)
+        except SystemExit as e:
+            status = e[0]
+        if status is None:
+            status = 0
+        return status

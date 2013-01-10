@@ -234,8 +234,7 @@ class SubCommand(command.CommandBase):
 
 def main():
     command = MainCommand()
-    command.parse_args()
-    command.run(command.args)
+    command.main()
 
 if __name__ == '__main__':
     main()
