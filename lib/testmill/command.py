@@ -15,6 +15,7 @@
 from __future__ import absolute_import, print_function
 
 import sys
+import getpass
 import argparse
 
 
@@ -95,6 +96,10 @@ class CommandBase(object):
     def read(self, prompt):
         """Prompt the user for a line of input."""
         return raw_input(prompt)
+
+    def getpass(self, prompt):
+        """Prompt the user for a password."""
+        return getpass.getpass(prompt)
 
     def write(self, message):
         """Write a line of text to standard output."""

@@ -17,7 +17,6 @@ from __future__ import absolute_import, print_function
 import sys
 import os
 import os.path
-import getpass
 import textwrap
 
 from . import ravello, main, util
@@ -39,7 +38,7 @@ class LoginCommand(main.SubCommand):
         self.write('Enter your Ravello credentials.')
         try:
             username = self.read('Username: ')
-            password = getpass.getpass('Password: ')
+            password = self.getpass('Password: ')
         except KeyboardInterrupt:
             self.stdout.write('\n')
             self.exit(0)
