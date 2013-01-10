@@ -2,3 +2,5 @@ build/
 dist/
 images/*.xml
 *.pyc
+*.egg-info
+trash/
