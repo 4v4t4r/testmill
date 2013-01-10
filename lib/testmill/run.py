@@ -614,6 +614,7 @@ class RunCommand(main.SubCommand):
         fab.env.appmap = appmap
         fab.env.vmmap = vmmap
         fab.env.addrmap = addrmap
+        fab.env.cwd = None
         fab.env.hosts = list(addrmap)
         fab.env.user = 'ravello'
         fab.env.key_filename = self.privkey_file
