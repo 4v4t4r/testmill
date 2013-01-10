@@ -140,7 +140,7 @@ class RavelloClient(object):
         url = self.path + url
         if headers is None:
             headers = []
-        headers.append(('User-Agent', 'Ravello/1.0'))
+        headers.append(('User-Agent', 'TestMill/1.0'))
         headers.append(('Accept', 'application/json, */*'))
         if self._cookie is not None:
             headers.append(('Cookie', self._cookie))
