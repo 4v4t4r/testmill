@@ -48,8 +48,9 @@ class CommandBase(object):
     usage = None
     description = None
 
-    def __init__(self):
+    def __init__(self, parent=None):
         """Create a new command."""
+        self.parent = parent
         self.sub_commands = []
         self.stdin = sys.stdin
         self.stdout = sys.stdout

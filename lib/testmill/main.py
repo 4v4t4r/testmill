@@ -61,9 +61,9 @@ class MainCommand(command.CommandBase):
     def __init__(self):
         super(MainCommand, self).__init__()
         from . import login, ps, run
-        self.add_sub_command(login.LoginCommand())
-        self.add_sub_command(ps.PsCommand())
-        self.add_sub_command(run.RunCommand())
+        self.add_sub_command(login.LoginCommand(parent=self))
+        self.add_sub_command(ps.PsCommand(parent=self))
+        self.add_sub_command(run.RunCommand(parent=self))
 
     def add_args(self, parser):
         super(MainCommand, self).add_args(parser)
@@ -87,8 +87,8 @@ class SubCommand(command.CommandBase):
     images, applications and blueprints.
     """
 
-    def __init__(self):
-        super(SubCommand, self).__init__()
+    def __init__(self, parent):
+        super(SubCommand, self).__init__(parent)
         self.logger = logging.getLogger('ravello')
         self._api = None
 
