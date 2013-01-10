@@ -1,0 +1,5 @@
+language: clojure
+environments:
+- ubuntu1204
+- fedora17
+- fedora16
