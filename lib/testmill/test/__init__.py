@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import os
-import os.path
 import sys
+import os.path
+import subprocess
 
-import fabric.api
 import testmill
-import testmill.ravello
+from nose import SkipTest
 
 
 # Python 2.x / 3.x compatiblity
@@ -52,7 +52,79 @@ class UnitTest(object):
         try:
             cls.service_url = config.get('test', 'service_url')
         except configparser.NoOptionError:
-            cls.service_url = None
+            cls.service_url = testmill.ravello.RavelloClient.default_url
+        try:
+            cls.sudo_password = config.get('test', 'sudo_password')
+        except configparser.NoOptionError:
+            cls.sudo_password = None
+
+    def require_sudo(self):
+        """This test requires sudo."""
+        if sys.platform.startswith('win'):
+            raise SkipTest('sudo is not available no Windows')
+        if self.sudo_password:
+            # If a sudo password is configured, make sure it is correct.
+            sudo = subprocess.Popen(['sudo', '-S', '-k', 'true'],
+                                    stdin=subprocess.PIPE)
+            sudo.communicate(self.sudo_password + '\n')
+            if sudo.returncode != 0:
+                m = 'incorrect sudo_password under [test] in setup.cfg'
+                raise SkipTest(m)
+        else:
+            # Otherwise, see if we are able to run sudo with a password.
+            sudo = subprocess.Popen(['sudo', '-n', 'true'],
+                                    stderr=subprocess.PIPE)
+            sudo.communicate()
+            if sudo.returncode != 0:
+                m = 'no sudo_password in setup.cfg and sudo needs a password'
+                raise SkipTest(m)
+
+    def sudo(self, command):
+        """Execute a command under sudo. Raise an exception on error."""
+        if self.sudo_password:
+            command = ['sudo', '-S', '-k'] + command
+            sudo = subprocess.Popen(command, stdin=subprocess.PIPE)
+            sudo.communicate(self.sudo_password + '\n')
+            returncode = sudo.returncode
+        else:
+            command = ['sudo'] + command
+            returncode = subprocess.call(command)
+        if returncode != 0:
+            raise subprocess.CalledProcessError(returncode, ' '.join(command))
+
+    if sys.platform == 'darwin':
+
+        class blocker(object):
+            """Context manager that block IP traffic to a certain IP."""
+
+            def __init__(self, suite, ipaddr):
+                self.suite = suite
+                self.ipaddr = ipaddr
+
+            def __enter__(self):
+                # Divert return traffic to the local discard port.
+                rule = 'add 2000 divert 9 tcp from {} to any' \
+                        .format(self.ipaddr)
+                self.suite.sudo(['ipfw', '-q'] + rule.split())
+
+            def __exit__(self, *exc):
+                rule = 'del 2000'
+                self.suite.sudo(['ipfw', '-q'] + rule.split())
+
+    else:
+        blocker = None
+
+    def require_ip_blocking(self):
+        """This test requires IP blocking."""
+        if self.blocker is None:
+            raise SkipTest('IP blocking is required for this test')
+        self.require_sudo()
+
+    def block_ip(self, ipaddr):
+        """Return a context manager that blocks 'ipaddr'."""
+        assert self.blocker is not None
+        return self.blocker(self, ipaddr)
+
 
 # redirect stderr to stdout to that nose will capture it
 sys.stderr = sys.stdout
@@ -76,3 +148,14 @@ def mock(self, read=None, getpass=None):
     self.stderr = self.stdout
 
 testmill.CommandBase.mock = mock
+
+
+def assert_raises(exc_type, func, *args, **kwds):
+    try:
+        func(*args, **kwds)
+    except Exception as exc:
+        pass
+    else:
+        exc = None
+    assert isinstance(exc, exc_type)
+    return exc

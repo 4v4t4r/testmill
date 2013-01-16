@@ -42,8 +42,7 @@ class LoginCommand(main.SubCommand):
         except KeyboardInterrupt:
             self.stdout.write('\n')
             self.exit(0)
-        api = ravello.RavelloClient()
-        api.connect(args.service_url)
+        api = ravello.RavelloClient(service_url=args.service_url)
         try:
             api.login(username, password)
         except ravello.RavelloError as e:

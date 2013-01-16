@@ -14,11 +14,13 @@
 
 import os
 import json
+import time
 import struct
 import socket
 import urlparse
 import httplib
 import logging
+import ssl
 
 
 OK_CODES = frozenset((httplib.OK, httplib.CREATED, httplib.ACCEPTED,
@@ -102,21 +104,49 @@ class RavelloError(Exception):
             return self.args[0]
 
 
+def should_retry(exc):
+    """Return whether to retry an API call that raised exception `e'."""
+    if isinstance(exc, socket.timeout):
+        return True
+    elif isinstance(exc, ssl.SSLError):
+        # XXX: This is not a great way to check for a timeout.
+        # However, e.errno is unset...
+        return 'time' in exc.message
+    return False
+
+def idempotent(method):
+    return method in ('GET', 'HEAD', 'PUT')
+
+
 class RavelloClient(object):
     """Simple Ravello API client.
 
     TODO: just a quick hack, should use ravello library once that's released.
     """
 
+    default_retries = 3
+    default_timeout = 30
     default_url = 'https://cloud.ravellosystems.com/services'
 
-    def __init__(self):
+    def __init__(self, username=None, password=None, service_url=None,
+                 token=None, retries=None, timeout=None):
         """Create a new connection."""
-        self.connection = None
         self.logger = logging.getLogger('ravello')
+        self.username = username
+        self.password = password
+        self._set_url(service_url)
+        self.token = token
+        self.retries = retries or self.default_retries
+        self.timeout = timeout or self.default_timeout
+        self.connection = None
+        self._cookie = None
+        self._project = None
+        self._total_retries = 0
 
     def _set_url(self, url):
         """Parse and set the service URL."""
+        if url is None:
+            url = self.default_url
         parsed = urlparse.urlsplit(url)
         if parsed.scheme not in ('', 'http', 'https'):
             raise ValueError('unknown scheme: %s' % self.scheme)
@@ -131,12 +161,35 @@ class RavelloClient(object):
             self.port = httplib.HTTPS_PORT
         self.url = url
 
+    def _retry_request(self, method, url, body, headers):
+        """Retry a request up to self.retry times."""
+        log = self.logger
+        for i in range(self.retries):
+            try:
+                if self.connection is None:
+                    self._connect()
+                    self._login()
+                t1 = time.time()
+                self.connection.request(method, url, body, dict(headers))
+                response = self.connection.getresponse()
+                response.body = response.read()
+                t2 = time.time()
+                log.debug('got response in {:.2f} secs'.format(t2-t1))
+            except Exception as error:
+                self.close()
+                if not should_retry(error) or not idempotent(method):
+                    raise
+            else:
+                return response
+            self._total_retries += 1
+            log.debug('operation timed out, reset connection and retry')
+        log.debug('maximum retries reached, giving up')
+        raise RavelloError('maximum retries reached making API call')
+
     def _make_request(self, method, url, body=None, headers=None):
         """Make a single HTTP request to the API and return the
         HTTPResponse object."""
         log = self.logger
-        connection = self.connection
-        assert connection is not None
         url = self.path + url
         if headers is None:
             headers = []
@@ -151,16 +204,16 @@ class RavelloClient(object):
             headers.append(('Content-Type', 'application/json'))
         try:
             log.debug('API request: %s %s, %d bytes', method, url, len(body))
-            connection.request(method, url, body, dict(headers))
-            response = connection.getresponse()
-            headers = response.getheaders()
-            body = response.read()
-        except (socket.error, httplib.HTTPException) as e:
-            log.error('error when making HTTP request: %s', str(e))
-        log.debug('API response: %s, %d bytes', response.status, len(body))
+            response = self._retry_request(method, url, body, dict(headers))
+        except (socket.error, ssl.SSLError, httplib.HTTPException) as e:
+            log.error('error making API call: %s', str(e))
+            raise RavelloError(str(e))
+        body = response.body
+        ctype = response.getheader('Content-Type')
+        log.debug('API response: {}, {} bytes, ({})' \
+                .format(response.status, len(body), ctype))
         if response.status not in OK_CODES:
             raise RavelloError('operation failed', response.status)
-        ctype = response.getheader('Content-Type')
         if ctype == 'application/json':
             try:
                 parsed = json.loads(body)
@@ -173,20 +226,27 @@ class RavelloClient(object):
         return response
 
     def connect(self, url=None):
+        """Connect to the API. NOTE: will not retry."""
         if self.connection is not None:
             raise RuntimeError('already connected')
-        self._set_url(url or self.default_url)
+        self._set_url(url)
+        try:
+            self._connect()
+        except (socket.error, ssl.SSLError) as e:
+            raise RavelloError('could not connect to API')
+
+    def _connect(self):
+        """Low-level connect."""
+        assert self.connection is None
+        log = self.logger
         if self.scheme == 'http':
             conn_class = httplib.HTTPConnection
         else:
             conn_class = httplib.HTTPSConnection
-        connection = conn_class(self.host, self.port)
-        try:
-            connection.connect()
-        except socket.error as e:
-            raise RavelloError('could not connect to API')
-        else:
-            self.logger.debug('connected to %s', self.url)
+        connection = conn_class(self.host, self.port, timeout=self.timeout)
+        log.debug('connecting to {}:{}...'.format(self.host, self.port))
+        connection.connect()
+        log.debug('connected')
         self.connection = connection
         self._cookie = None
 
@@ -198,17 +258,30 @@ class RavelloClient(object):
             except Exception:
                 pass
         self.connection = None
+        self._cookie = None
 
     def login(self, username=None, password=None, token=None):
         """Log in to the API."""
-        if self.connection is None:
-            raise RuntimeError('not connected')
         if self._cookie is not None:
             raise RuntimeError('already logged in')
-        if not bool(username and password) ^ bool(token):
-            raise ValueError('either specify username/password, or token')
-        if username and password:
-            auth = '%s:%s' % (username, password)
+        if username is not None:
+            if password is None:
+                raise ValueError('username provided but not password')
+            if token is not None:
+                raise ValueError('cannot specify both username and token')
+            self.username = username
+            self.password = password
+        elif token is not None:
+            self.token = token
+        self._login()
+
+    def _login(self):
+        """Low-level login."""
+        assert self._cookie is None
+        log = self.logger
+        if self.username:
+            log.debug('performing a new login')
+            auth = '%s:%s' % (self.username, self.password)
             auth = auth.encode('base64')
             headers = [('Authorization', 'Basic %s' % auth)]
             response = self._make_request('POST', '/login', headers=headers)
@@ -218,28 +291,28 @@ class RavelloClient(object):
                 parts = [ part.strip() for part in cookie.split(';') ]
                 if parts[0].startswith('JSESSIONID='):
                     self._cookie = parts[0]
-                    self.logger.debug('login: got JSESSIONID cookie')
+                    log.debug('login: got JSESSIONID cookie')
                     break
             else:
-                self.logger.error('login: JSESSIONID cookie not found!')
+                log.error('login: JSESSIONID cookie not found!')
                 raise RavelloError('login failed')
+        elif self.token:
+            log.debug('logging in with token')
+            self._cookie = self.token
+            self.hello()  # Make sure the token works
+            log.debug('token is valid')
         else:
-            self._cookie = token
-        # Ping the API to make sure we are connected
-        self.hello()
+            raise RuntimeError('canot login: no username/password or token')
         # Also figure out the default project.
-        projects = self.get_projects()
-        self._project = projects[0]['id']
-        # Save credentials if we might need to reconnect later
-        self.username = username
-        self.password = password
-        self.token = token
+        if self._project is None:
+            projects = self.get_projects()
+            self._project = projects[0]['id']
 
     def logout(self):
         """Log out."""
         if self.connection is None:
             raise RuntimeError('not connected')
-        self._make_request('POST', '/logout')
+        self._make_request('POST', '/logout')  # will invalidate the token
         self._cookie = None
 
     def hello(self):

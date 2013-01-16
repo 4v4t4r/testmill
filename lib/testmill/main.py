@@ -142,8 +142,7 @@ class SubCommand(command.CommandBase):
         if self._api is not None:
             return self._api
         args = self.args
-        api = ravello.RavelloClient()
-        api.connect(args.service_url)
+        api = ravello.RavelloClient(service_url=args.service_url)
         if args.user and args.password:
             self._try_password_login(api)
         else:
