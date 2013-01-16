@@ -686,7 +686,7 @@ class RunCommand(main.SubCommand):
         appmap = self.start_applications(manifest)
 
         # Wait until the applications are up.. And show some progress.
-        vmmap, addrmap = self.wait_until_applications_are_up(appmap, 600, 10)
+        vmmap, addrmap = self.wait_until_applications_are_up(appmap, 900, 10)
         alive = self.wait_until_vms_accept_ssh(addrmap, 300, 5)
         if hasattr(self, 'progress_bar_started'):
             self.progress(' DONE\n')
