@@ -620,6 +620,7 @@ class RunCommand(main.SubCommand):
         fab.env.key_filename = self.privkey_file
         fab.env.disable_known_hosts = True
         fab.env.warn_only = self.args.continue_
+        fab.env.remote_interrupt = True
         # Suppress output for most actions
         fab.env.output_prefix = self.args.debug
         fabric.state.output.running = self.args.debug
