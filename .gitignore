@@ -4,3 +4,4 @@ images/*.xml
 *.pyc
 *.egg-info
 trash/
+venv*/
