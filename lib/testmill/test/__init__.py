@@ -102,14 +102,35 @@ class UnitTest(object):
                 self.ipaddr = ipaddr
 
             def __enter__(self):
-                # Divert return traffic to the local discard port.
-                rule = 'add 2000 divert 9 tcp from {} to any' \
-                        .format(self.ipaddr)
-                self.suite.sudo(['ipfw', '-q'] + rule.split())
+                # DROP return traffic.
+                command = 'ipfw -q add 2000 drop tcp from {} to any' \
+                            .format(self.ipaddr)
+                self.suite.sudo(command.split())
 
             def __exit__(self, *exc):
-                rule = 'del 2000'
-                self.suite.sudo(['ipfw', '-q'] + rule.split())
+                command = 'ipfw -q del 2000'
+                self.suite.sudo(command.split())
+
+    elif sys.platform == 'linux2':
+
+        class blocker(object):
+            """Block traffic on Linux."""
+
+            def __init__(self, suite, ipaddr):
+                self.suite = suite
+                self.ipaddr = ipaddr
+
+            def __enter__(self):
+                # DROP the return traffic. For some reason, DROPing the
+                # outgoing traffic does not (seem to) impact established
+                # connections.
+                command = 'iptables -I INPUT 1 -s {} -j DROP' \
+                            .format(self.ipaddr)
+                self.suite.sudo(command.split())
+
+            def __exit__(self, *exc):
+                command = 'iptables -D INPUT 1'
+                self.suite.sudo(command.split())
 
     else:
         blocker = None
