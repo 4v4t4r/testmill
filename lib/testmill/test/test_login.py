@@ -22,12 +22,12 @@ class TestLogin(testmill.test.UnitTest):
 
     def test_login(self):
         command = testmill.MainCommand()
-        command.mock(read=self.username, getpass=self.password)
-        status = command.main(['-s', self.service_url, 'login'])
+        status = command.main(['-p', self.password, '-s', self.service_url,
+                               'login', self.username])
         assert status == 0
 
     def test_failed_login(self):
         command = testmill.MainCommand()
-        command.mock(read=self.username, getpass='invalid')
-        status = command.main(['-s', self.service_url, 'login'])
+        status = command.main(['-u', self.username, '-p', 'invalid',
+                               '-s', self.service_url, 'login'])
         assert status != 0

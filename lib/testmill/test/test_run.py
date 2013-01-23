@@ -24,7 +24,6 @@ class TestRun(testmill.test.UnitTest):
 
     def test_run(self):
         command = testmill.MainCommand()
-        command.mock()
         project = os.path.join(self.topdir, 'examples', 'nolang')
         os.chdir(project)
         status = command.main(['-u', self.username, '-p', self.password,
@@ -33,7 +32,6 @@ class TestRun(testmill.test.UnitTest):
 
     def test_run_failed(self):
         command = testmill.MainCommand()
-        command.mock()
         project = os.path.join(self.topdir, 'examples', 'nolang')
         os.chdir(project)
         status = command.main(['-u', self.username, '-p', self.password,

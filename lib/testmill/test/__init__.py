@@ -150,26 +150,6 @@ class UnitTest(object):
 # redirect stderr to stdout to that nose will capture it
 sys.stderr = sys.stdout
 
-def mock(self, read=None, getpass=None):
-    """Mock up a command for unit testing."""
-    if isinstance(read, str):
-        def mock_read(prompt):
-            return read
-        self.read = mock_read
-    elif read is not None:
-        self.read = read
-    if isinstance(getpass, str):
-        def mock_getpass(prompt):
-            return getpass
-        self.getpass = mock_getpass
-    elif getpass is not None:
-        self.getpass = getpass
-    for subcmd in self.sub_commands:
-        subcmd.mock(self.read, self.getpass)
-    self.stderr = self.stdout
-
-testmill.CommandBase.mock = mock
-
 
 def assert_raises(exc_type, func, *args, **kwds):
     try:
