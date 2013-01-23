@@ -2,3 +2,4 @@ fabric>=1.5.1
 pyyaml
 mock
 pyexpect
+nose
