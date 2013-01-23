@@ -19,5 +19,6 @@ from .main import MainCommand, SubCommand
 from .login import LoginCommand
 from .ps import PsCommand
 from .run import RunCommand
+from .ssh import SshCommand
 
 from . import util, ravello

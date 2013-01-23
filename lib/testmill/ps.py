@@ -32,7 +32,7 @@ class PsCommand(main.SubCommand):
     def run(self, args):
         """The "ravello ps" command."""
         apps = self.api.get_applications()
-        self.write('Currently published applications:')
+        self.stdout.write('Currently published applications:\n')
         for app in sorted(apps, key=lambda x: x['name']):
             name = app['name']
             app = self.api.get_application(app['id'])
@@ -48,9 +48,9 @@ class PsCommand(main.SubCommand):
                 starttime = time.strftime('%Y/%m/%d %H:%M:%S', tm)
             else:
                 starttime = ''
-            self.write('== {0}'.format(name))
-            self.write('  {0}/{1} VMs running'.format(started, total))
-            self.write('  published to {0}/{1}'.format(cloud, region))
+            self.stdout.write('== {0}\n'.format(name))
+            self.stdout.write('  {0}/{1} VMs running\n'.format(started, total))
+            self.stdout.write('  published to {0}/{1}\n'.format(cloud, region))
             if started:
-                self.write('  started: {0}'.format(starttime))
-            self.write('')
+                self.stdout.write('  started: {0}\n'.format(starttime))
+            self.stdout.write('\n')

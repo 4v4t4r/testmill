@@ -14,19 +14,53 @@
 
 from __future__ import absolute_import, print_function
 
+import mock
+import argparse
+
 import testmill
 import testmill.test
 
 
 class TestLogin(testmill.test.UnitTest):
 
-    def test_login(self):
+    def test_login_run(self):
+        command = testmill.LoginCommand(None)
+        args = argparse.Namespace(user=self.username, password=self.password,
+                                  service_url=self.service_url, username=None)
+        try:
+            status = command.run(args)
+        except SystemExit as e:
+            status = e[0]
+        assert status is None
+
+    def test_login_main(self):
+        command = testmill.LoginCommand(None)
+        args = argparse.Namespace(user=self.username, password=self.password,
+                                  service_url=self.service_url, username=None)
+        status = command.main([], args)
+        assert status == 0
+
+    def test_main_login_prompt(self):
+        command = testmill.MainCommand()
+        with mock.patch.multiple('testmill.command.CommandBase',
+                        prompt=lambda *args: self.username,
+                        getpass=lambda *args: self.password):
+            status = command.main(['-s', self.service_url, 'login'])
+        assert status == 0
+
+    def test_main_login_with_options(self):
+        command = testmill.MainCommand()
+        status = command.main(['-u', self.username, '-p', self.password,
+                               '-s', self.service_url, 'login'])
+        assert status == 0
+
+    def test_main_login_with_positional_argument(self):
         command = testmill.MainCommand()
         status = command.main(['-p', self.password, '-s', self.service_url,
                                'login', self.username])
         assert status == 0
 
-    def test_failed_login(self):
+    def test_main_failed_login(self):
         command = testmill.MainCommand()
         status = command.main(['-u', self.username, '-p', 'invalid',
                                '-s', self.service_url, 'login'])

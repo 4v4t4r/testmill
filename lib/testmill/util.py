@@ -18,6 +18,7 @@ import os
 import sys
 import stat
 import yaml
+import subprocess
 
 
 def prettify(obj):
@@ -88,3 +89,42 @@ def get_config_dir():
         m = '{0} exists but is not a directory'
         raise OSError(m.format(configdir))
     return configdir
+
+
+def which(cmd):
+    """Find an executable in $PATH."""
+    if os.path.isabs(cmd):
+        if os.access(cmd, os.X_OK):
+            return cmd
+        return
+    elif cmd.startswith('.'):
+        cwd = os.getcwd()
+        fname = os.path.normpath(os.path.join(cwd, cmd))
+        if os.access(fname, os.X_OK):
+            return fname
+        return
+    path = os.environ.get('PATH')
+    if not path:
+        return
+    for elem in path.split(os.path.pathsep):
+        fname = os.path.normpath(os.path.join(elem, cmd))
+        if os.access(fname, os.X_OK):
+            return fname
+
+
+def find_openssh():
+    """Find an installed openssh."""
+    ssh = which('ssh')
+    if ssh is None:
+        return
+    cmd = subprocess.Popen([ssh, '-V'], stderr=subprocess.PIPE)
+    _, version = cmd.communicate()
+    if cmd.returncode == 0 and 'OpenSSH' in version:
+        return ssh
+
+def get_devnull():
+    """Return /dev/null or its equivalent."""
+    if not sys.platform.startswith('win'):
+        return '/dev/null'
+    else:
+        return 'NUL'

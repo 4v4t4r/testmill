@@ -15,34 +15,16 @@
 from __future__ import absolute_import, print_function
 
 import os
-import re
 import sys
 import stat
-import os.path
-import getpass
 import textwrap
-import tempfile
-import subprocess
 import hashlib
-import socket
-import select
-import errno
-import copy
-import time
-import json
 import yaml
 
 from . import main, ravello, util
 
-import fabric.tasks
-import fabric.state
-import fabric.network
-from fabric import api as fab
-
-if not sys.platform.startswith('win'):
-    EINPROGRESS = errno.EINPROGRESS
-else:
-    EINPROGRESS = errno.WSAEWOULDBLOCK
+import fabric
+import fabric.api as fab
 
 DEFAULT_TASKS = frozenset(('pack', 'renew', 'sysinit', 'copy', 'unpack',
         'prepare', 'execute', 'cleanup'))
@@ -50,8 +32,7 @@ DEFAULT_TASKS = frozenset(('pack', 'renew', 'sysinit', 'copy', 'unpack',
 
 def get_task(name, manifest, host):
     """Load a task from a manifest."""
-    env = fab.env
-    envname = env.appmap[env.vmmap[env.addrmap[host]]]
+    envname = fab.env.host_info[host][4]
     taskdef = manifest[envname][name]
     if not taskdef:
         return
@@ -98,7 +79,7 @@ class RenewTask(Task):
     """Re-new the lease for a VM."""
 
     def run(self):
-        fab.sudo("atrm `atq | awk '{print $1}'` || true")
+        fab.sudo("atrm `atq | awk '{print $1}'` 2>/dev/null || true")
 
 
 class PackTask(Task):
@@ -120,14 +101,17 @@ class CopyTask(Task):
         self.files = files
 
     def run(self):
-        fab.run('mkdir %s' % fab.env.BASEDIR)
+        fab.run('mkdir %s' % fab.env.testid)
         for glob in self.files:
-            fab.put(glob, fab.env.BASEDIR)
-        fab.env.cwd = fab.env.BASEDIR
+            fab.put(glob, fab.env.testid)
 
 
 class UnpackTask(Task):
     """Unpack the project into the current working directory."""
+
+    def run(self):
+        with fab.cd(fab.env.testid):
+            super(UnpackTask, self).run()
 
 
 class SysinitTask(Task): 
@@ -143,15 +127,19 @@ class SysinitTask(Task):
             md.update(cmd + '\000')
         token = md.hexdigest()
         name = '~/sysinit-%s.done' % token
-        ret = fab.run('test -f {0}'.format(name), warn_only=True, quiet=True)
+        ret = fab.run('test -f {}'.format(name), warn_only=True, quiet=True)
         if ret.succeeded:
             return
         super(SysinitTask, self).run(sudo=True)
-        fab.run('touch {0}'.format(name))
+        fab.run('touch {}'.format(name))
 
 
 class PrepareTask(Task):
     """Prepare a VM for running the tests."""
+
+    def run(self):
+        with fab.cd(fab.env.testid):
+            super(PrepareTask, self).run()
 
 
 class ExecuteTask(Task):
@@ -167,21 +155,19 @@ class ExecuteTask(Task):
     """
 
     def schedule_shutdown(self):
-        env = fab.env
-        vmid = env.addrmap[env.host]
-        appid = env.vmmap[vmid]
-        name = env.appmap[appid]
+        vmid, _, appid, _, envname = fab.env.host_info[fab.env.host]
         # TODO: shutdown multi-vm apps
-        delay = min(90, self.manifest[name]['keep'])
-        url = '%s/deployment/app/%d/vm/%s/stop' % (env.API_URL, appid, vmid)
-        cmd = 'curl --cookie %s --request POST %s; ' % (env.API_COOKIE, url)
+        delay = min(90, self.manifest[envname]['keep'])
+        url = '%s/deployment/app/%d/vm/%s/stop' % (fab.env.api_url, appid, vmid)
+        cmd = 'curl --cookie %s --request POST %s; ' % (fab.env.api_cookie, url)
         cmd += 'shutdown -h now'
         cmd = 'echo "%s" | at "now + %d minutes"' % (cmd, delay)
         fab.sudo(cmd, quiet=True)
 
     def run(self):
         self.schedule_shutdown()
-        super(ExecuteTask, self).run()
+        with fab.cd(fab.env.testid):
+            super(ExecuteTask, self).run()
 
 
 class CleanupTask(Task):
@@ -219,91 +205,6 @@ class RunCommand(main.SubCommand):
         parser.add_argument('--dump', action=parser.store_and_abort,
                             nargs=0, default=False, const=True)
         parser.add_argument('command', nargs='?')
-
-    def _try_use_existing_keypair(self):
-        """Try to use a keypair that exists in ~/.ravello."""
-        cfgdir = util.get_config_dir()
-        privname = os.path.join(cfgdir, 'id_ravello')
-        try:
-            st = os.stat(privname)
-        except OSError:
-            return False
-        if not stat.S_ISREG(st.st_mode):
-            m = 'Error: {0} exists but is not a regular file'
-            self.error(m.format(privname, pubname))
-            self.exit(1)
-        pubname = privname + '.pub'
-        try:
-            st = os.stat(pubname)
-        except OSError:
-            st = None
-        if st is None or not stat.S_ISREG(st.st_mode):
-            m = "Error: {0} exists but {1} doesn't or isn't a regular file."
-            self.error(m.format(privname, pubname))
-            self.exit(1)
-        with file(pubname) as fin:
-            pubkey = fin.read()
-        keyparts = pubkey.strip().split()
-        pubkeys = self.api.get_pubkeys()
-        for pubkey in pubkeys:
-            if pubkey['name'] == keyparts[2]:
-                self.pubkey = pubkey
-                self.privkey_file = privname
-                return True
-        return False
-
-    def _create_new_keypair(self):
-        """Create a new keypair and upload it to Ravello."""
-        # First try to generate it locallly (= more privacy)
-        cfgdir = util.get_config_dir()
-        privname = os.path.join(cfgdir, 'id_ravello')
-        pubname = privname + '.pub'
-        keyname = 'ravello@%s' % socket.gethostname()
-        try:
-            self.info("Generating keypair using 'ssh-keygen'...")
-            subprocess.call(['ssh-keygen', '-q', '-t', 'rsa', '-C', keyname,
-                             '-b', '2048', '-N', '', '-f', privname])
-        except OSError:
-            self.info('Failed (ssh-keygen not found).')
-            pubkey = None
-        except subprocess.CalledProcessError as e:
-            m = 'Error: ssh-keygen returned with error status {0}'
-            self.error(m.format(e.returncode))
-        else:
-            with file(pubname) as fin:
-                pubkey = fin.read()
-            keyparts = pubkey.strip().split()
-        # If that failed, have the API generate one for us
-        if pubkey is None:
-            keyname = 'ravello@api-generated'
-            self.info('Requesting a new keypair via the API...')
-            keypair = self.api.create_keypair()
-            with file(privname, 'w') as fout:
-                fout.write(keypair['privateKey'])
-            with file(pubname, 'w') as fout:
-                fout.write(keypair['publicKey'].rstrip())
-                fout.write(' {0} (generated remotely)\n'.format(keyname))
-            pubkey = keypair['publicKey'].rstrip()
-            keyparts = pubkey.split()
-            keyparts[2:] = [keyname]
-        # Create the pubkey in the API under a unique name
-        pubkeys = self.api.get_pubkeys()
-        keyname = util.get_unused_name(keyname, pubkeys)
-        keyparts[2] = keyname
-        keydata = '{0} {1} {2}\n'.format(*keyparts)
-        pubkey = ravello.Pubkey(name=keyname)
-        pubkey['publicKey'] = keydata
-        pubkey = self.api.create_pubkey(pubkey)
-        with file(pubname, 'w') as fout:
-            fout.write(keydata)
-        self.pubkey = pubkey
-        self.privkey_file = privname
-
-    def check_keypair(self):
-        """Check if we have a keypair. If not, create it."""
-        if self._try_use_existing_keypair():
-            return
-        self._create_new_keypair()
 
     def load_manifest(self):
         """Load and parse the manifest."""
@@ -396,6 +297,9 @@ class RunCommand(main.SubCommand):
             util.merge(manifest[name], defaults)
             if self.args.command:
                 manifest[name]['execute']['commands'] = [self.args.command]
+        if 'language_defaults' in manifest:
+            del manifest['language_defaults']
+        return manifest
 
     def check_referenced_entities_in_manifest(self, manifest):
         """Check the manifest to make sure all referenced entities exist."""
@@ -424,8 +328,8 @@ class RunCommand(main.SubCommand):
     VM_STATE_PREFERENCES = ['STARTED', 'STARTING', 'STOPPED', 'PUBLISHING']
     VM_REUSE_STATES = ['PUBLISHING', 'STARTING', 'STARTED', 'STOPPED']
 
-    def _reuse_single_vm_application(self, envdef):
-        """Try to re-use a single VM application."""
+    def _reuse_existing_application(self, envdef):
+        """Try to re-use an existing application."""
         image = self.get_image(name=envdef['vm'])
         candidates = []
         for app in self.applications:
@@ -453,14 +357,12 @@ class RunCommand(main.SubCommand):
             return
         candidates.sort(key=lambda x: self.VM_STATE_PREFERENCES.index(x[0]))
         state, app, vm = candidates[0]
-        m = 'Re-using {0} application "{1}" for "{2}"'
-        self.info(m.format(state.lower(), app['name'], envdef['name']))
         if state == 'STOPPED':
             self.api.start_vm(app, vm)
-        return app['id']
+        return app
 
-    def _create_new_single_vm_application(self, envdef):
-        """Create a new single VM application."""
+    def _create_new_application(self, envdef):
+        """Create a new application."""
         image = self.get_image(name=envdef['vm'])
         image = self.get_full_image(image['id'])
         vm = ravello.update_luids(image)
@@ -472,151 +374,34 @@ class RunCommand(main.SubCommand):
         app = self.api.create_application(app)
         self.api.publish_application(app)
         self.get_full_application(app['id'], force_reload=True)
-        m = 'Created new application "{0}" for "{1}"'
-        self.info(m.format(app['name'], envdef['name']))
-        return app['id']
+        return app
 
-    def start_applications(self, manifest):
+    def start_applications(self, manifest, force_new=False):
         """Start up all applications."""
-        appmap = {}  # { appid: manifest_name }
+        apps = []
         for name in manifest['environments']:
             envdef = manifest[name]
             vmname = envdef['vm']
-            bpname = envdef.get('blueprint')
-            if bpname is None:
-                appid = None
-                if not self.args.new:
-                    appid = self._reuse_single_vm_application(envdef)
-                if appid is None:
-                    appid = self._create_new_single_vm_application(envdef)
-            else:
-                # TODO: blueprints
-                continue
-            appmap[appid] = name
-        return appmap
+            app = None
+            if not force_new:
+                app = self._reuse_existing_application(envdef)
+                if app is not None:
+                    state = self.get_application_state(app)
+                    self.info("Re-using {} application '{}' for '{}'."
+                                .format(state.lower(), app['name'],
+                                        envdef['name']))
+            if app is None:
+                app = self._create_new_application(envdef)
+                if app is not None:
+                    self.info("Created new application '{}' for '{}'."
+                                .format(app['name'], envdef['name']))
+            if app is not None:
+                apps.append(app)
+        self.applications = apps
+        return apps
 
-    VM_WAIT_STATES = ['PUBLISHING', 'STARTING', 'STARTED']
-
-    def wait_until_applications_are_up(self, appmap, timeout, poll_timeout):
-        """Wait until all the application are started."""
-        end_time = time.time() + timeout
-        vmmap = {}  # { vmid: appid }
-        addrmap = {}  # { host_or_ip: vmid }
-        waitapps = set(appmap)
-        while True:
-            if time.time() > end_time:
-                break
-            min_state = 3
-            for appid in list(waitapps):  # updating
-                app = self.get_full_application(appid, force_reload=True)
-                app_min_state = 3
-                for status in app['cloudVmsStatusCounters']:
-                    state = status['status']
-                    try:
-                        state = self.VM_WAIT_STATES.index(state)
-                    except ValueError:
-                        waitapps.remove(appid)
-                        state = 3
-                    app_min_state = min(app_min_state, state)
-                if app_min_state == 2:
-                    for vm in app['applicationLayer']['vm']:
-                        addr = vm['dynamicMetadata']['externalIp']
-                        addrmap[addr] = vm['id']
-                        vmmap[vm['id']] = appid
-                    waitapps.remove(appid)
-                min_state = min(min_state, app_min_state)
-            if not waitapps:
-                break
-            if min_state == 0:
-                self.progress('P')
-            elif min_state == 1:
-                self.progress('S')
-            time.sleep(poll_timeout)
-        if len(waitapps) == len(appmap):
-            self.error('Error: no application could be started up, exiting.')
-            self.exit(1)
-        elif len(waitapps):
-            m = 'Error: Could not start {0} out of {1} applications.'
-            self.error(m.format(len(waitapps), len(appmap)))
-            failed = ', '.join([appmap[appid] for appid in waitapps])
-            m = 'Continue without failed applications: {0}'
-            self.info(m.format(failed))
-        return vmmap, addrmap
-
-    def wait_until_vms_accept_ssh(self, addrmap, timeout, poll_timeout):
-        """Wait for `timeout` seconds until the IP addresses in `addrs` accept
-        a connection on their ssh port.
-        """
-        end_time = time.time() + timeout
-        addrs = set(addrmap)
-        alive = []
-        # For the intricate details on non-blocking connect()'s, see Stevens,
-        # UNIX network programming, volume 1, chapter 16.3 and following.
-        while True:
-            if time.time() > end_time:
-                break
-            waitfds = {}
-            for addr in addrs:
-                sock = socket.socket()
-                sock.setblocking(False)
-                try:
-                    sock.connect((addr, 22))
-                except socket.error as e:
-                    if e.errno != EINPROGRESS:
-                        self.error('connect(): errno {0.errno}'.format(e))
-                        raise
-                waitfds[sock.fileno()] = (sock, addr)
-            poll_end_time = time.time() + poll_timeout
-            while True:
-                timeout = poll_end_time - time.time()
-                if timeout < 0:
-                    for fd in waitfds:
-                        sock, addr = waitfds[fd]
-                        sock.close()
-                    break
-                try:
-                    wfds = list(waitfds)
-                    _, wfds, _ = select.select([], wfds, [], timeout)
-                except select.error as e:
-                    if e.args[0] != errno.EINTR:
-                        self.error('select(): errno {0.errno}'.format(e))
-                        raise
-                for fd in wfds:
-                    assert fd in waitfds
-                    sock, addr = waitfds[fd]
-                    try:
-                        error = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-                    except socket.error as e:
-                        error = e.errno
-                    # TODO: are there any terminal errors here?
-                    sock.close()
-                    if not error:
-                        alive.append(addr)
-                        addrs.remove(addr)
-                    del waitfds[fd]
-                if not waitfds:
-                    break
-            if not addrs:
-                break
-            self.progress('C')  # 'C' = Connecting
-            timeout = poll_end_time - time.time()
-            if timeout > 0:
-                time.sleep(timeout)
-        if len(alive) != len(addrmap):
-            m = 'Error: Could not start {0} out of {1} applications.'
-            self.error(m.format(len(addrmap)-len(alive), len(addrmap)))
-        elif len(alive) == 0:
-            self.error('Error: no VM came up, exiting')
-            self.exit(1)
-        return alive
-
-    def setup_fabric_environment(self, appmap, vmmap, addrmap):
-        """Set up the fabric environment."""
-        fab.env.appmap = appmap
-        fab.env.vmmap = vmmap
-        fab.env.addrmap = addrmap
-        fab.env.cwd = None
-        fab.env.hosts = list(addrmap)
+    def setup_fabric(self):
+        """Set up a default fabric configuration."""
         fab.env.user = 'ravello'
         fab.env.key_filename = self.privkey_file
         fab.env.disable_known_hosts = True
@@ -627,42 +412,29 @@ class RunCommand(main.SubCommand):
         fabric.state.output.running = self.args.debug
         fabric.state.output.output = self.args.debug
         fabric.state.output.status = self.args.debug
-        fab.env.COMMAND = self.args.command
+        fab.env.command = self.args.command
         # Remote distribution directory.
-        basedir = os.urandom(16).encode('hex')
-        fab.env.BASEDIR = basedir
-        # Export API (for shutdown)
-        fab.env.API_URL = self.api.url
-        fab.env.API_COOKIE = self.api._cookie
-
-    def progress(self, progress):
-        if self.args.quiet:
-            return
-        if not getattr(self, 'progress_bar_started', False):
-            self.info('Waiting until applications are ready...')
-            self.info("Progress: 'P' = Publishing, 'S' = Starting, 'C' = Connecting")
-            self.stdout.write('==> ')
-            self.stdout.flush()
-            self.progress_bar_started = True
-        self.stdout.write(progress)
-        self.stdout.flush()
+        testid = os.urandom(16).encode('hex')
+        fab.env.testid = testid
+        # Export API connection info (to schedule in-guest shutdown)
+        fab.env.api_url = self.api.url
+        fab.env.api_cookie = self.api._cookie
 
     def run(self, args):
         """The "ravello run" command."""
-        # Load the manifest and the default manifest.
+        
+        # Get a manifest
+
         manifest = self.load_manifest()
-
-        # Detect language, if "language" is not given.
         self.detect_language(manifest)
-
-        # Expand from shorthand .ravello.yml notation to full notation.
-        # Also check for missing or conflicting keys.
-        self.check_and_explode_manifest(manifest)
+        manifest = self.check_and_explode_manifest(manifest)
 
         # Some more argument parsing
+
         if args.dump:
             self.stdout.write(util.prettify(manifest))
             self.exit(0)
+
         if args.environments:
             envs = [env.lower() for env in args.environments.split(',')]
             manifest['environments'] = [env for env in manifest['environments']
@@ -671,54 +443,99 @@ class RunCommand(main.SubCommand):
             self.error('No environments defined, exiting.')
             self.exit(1)
 
-        # Load images, applications and blueprints
         self.load_cache()
-
-        # Check for referenced entities that are unknown
         self.check_referenced_entities_in_manifest(manifest)
 
-        # Ready to go...
+        # Start applications and wait until they are UP and reachable via ssh.
+
         names = ', '.join(manifest['environments'])
-        self.info('Environments to run: {0}'.format(names))
+        self.info('Environments to run: {0}.'.format(names))
 
-        # Ensure we have a keypair
         self.check_keypair()
+        apps = self.start_applications(manifest)
 
-        # Start up the applications.
-        appmap = self.start_applications(manifest)
+        self.start_progress_bar(textwrap.dedent("""\
+            Waiting until applications are ready...
+            Progress: 'P' = Publishing, 'S' = Starting, 'C' = Connecting
+            ===> """))
 
-        # Wait until the applications are up.. And show some progress.
-        vmmap, addrmap = self.wait_until_applications_are_up(appmap, 900, 10)
-        alive = self.wait_until_vms_accept_ssh(addrmap, 300, 5)
-        if hasattr(self, 'progress_bar_started'):
-            self.progress(' DONE\n')
-        addrmap = dict(((addr, addrmap[addr]) for addr in alive))
+        alive = self.wait_until_applications_are_up(apps)
+        if len(alive) == 0:
+            self.error('Error: no application could be started up, exiting.')
+            self.exit(1)
+        if len(alive) < len(apps):
+            aliveids = [ app['id'] for app in alive ]
+            failed = [util.splitname(app['name'])[0]
+                        for app in apps
+                            if app['id'] not in aliveids]
+            self.error(textwrap.dedent("""\
+                    Error: Could not start {} out of {} applications.
+                    Continue without failed applications: {}."""
+                        .format(len(failed), len(apps), ', '.join(failed))))
+
+        reachable = self.wait_until_applications_accept_ssh(alive)
+        if len(reachable) == 0:
+            self.errro('Error: No applications can be reached, exiting.')
+            self.exit(1)
+        if len(reachable) < len(alive):
+            reachableids = [ app['id'] for app in reachable ]
+            unreachable = [util.splitname(app['name'])[0]
+                            for app in apps
+                                if app['id'] not in reachableids]
+            self.error(textwrap.dedent("""\
+                    Error: Could not start {0} out of {1} applications.
+                    Continue without unreachable applications: {}."""
+                        .format(len(unreachable), len(alive),
+                                ', '.join(unreachable))))
+
+        self.end_progress_bar('DONE')
 
         # Now run the tasks...
-        self.setup_fabric_environment(appmap, vmmap, addrmap)
+        
+        hosts = []
+        host_info = {}
+        for app in reachable:
+            for vm in app['applicationLayer']['vm']:
+                try:
+                    keypair = vm['customVmConfigurationData']['keypair']
+                except KeyError:
+                    continue
+                ipaddr = vm['dynamicMetadata']['externalIp']
+                hosts.append(ipaddr)
+                host_info[ipaddr] = (vm['id'], vm['name'],
+                                     app['id'], app['name'],
+                                     util.splitname(app['name'])[0])
+        self.setup_fabric()
+        fab.env.hosts = hosts
+        fab.env.host_info = host_info
 
-        # Pack: local only
-        anyhost = [fab.env.hosts[0]]
+        # pack is local only
+        anyhost = [hosts[0]]
         fabric.tasks.execute(run_task, 'pack', manifest, hosts=anyhost)
 
         # Start parallel processing. Minimize forks by running as many actions
         # in a single composite task.
-        fab.env.parallel = len(fab.env.hosts) > 1
+        #fab.env.parallel = len(fab.env.hosts) > 1 and not args.debug
+        fab.env.parallel = False
         init_actions = ('renew', 'sysinit', 'copy', 'unpack', 'prepare')
         fabric.tasks.execute(run_tasks, init_actions, manifest)
         # Communicate new working directory..
-        fab.env.cwd = fab.env.BASEDIR
+        #fab.env.cwd = fab.env.testid
 
         # The main command is run serially so that we can show output in a
         # sensible way.
         fabric.state.output.output = True
         for host in fab.env.hosts:
-            name = appmap[vmmap[addrmap[host]]]
             task = get_task('execute', manifest, host)
-            m = "\n== Output for '{0}' on '{1}':\n"
-            self.write(m.format(task.commands[0], name))
+            envname = host_info[host][4]
+            if len(task.commands) > 1:
+                command = '{}; ...'.format(tasks.commands[0])
+            else:
+                command = task.commands[0]
+            self.stdout.write("\n== Output for '{}' on '{}':\n\n"
+                              .format(command, envname))
             fabric.tasks.execute(task, hosts=[host])
-            self.write('')
+            self.stdout.write('\n')
 
         # cleanup + shutdown: in parallel again
         #fabric.state.output.output = False

@@ -33,12 +33,20 @@ class LoginCommand(main.SubCommand):
             to your account in your home directory.
             """)
 
+    def add_args(self, parser, level=None):
+        parser.add_argument('username', nargs='?')
+
     def run(self, args):
         """The "ravello login" command."""
-        self.write('Enter your Ravello credentials.')
+        username = args.username or args.user
+        password = args.password
+        if username is None:
+            self.stdout.write('Enter your Ravello credentials.\n')
         try:
-            username = self.read('Username: ')
-            password = self.getpass('Password: ')
+            if username is None:
+                username = self.prompt('Username: ')
+            if password is None:
+                password = self.getpass('Password: ')
         except KeyboardInterrupt:
             self.stdout.write('\n')
             self.exit(0)
@@ -46,7 +54,7 @@ class LoginCommand(main.SubCommand):
         try:
             api.login(username, password)
         except ravello.RavelloError as e:
-            self.error('Error: login failed ({0!s})'.format(e))
+            self.error('Error: login failed ({!s})'.format(e))
             self.exit(1)
         cfgdir = util.get_config_dir()
         tokname = os.path.join(cfgdir, 'api-token')
@@ -57,4 +65,4 @@ class LoginCommand(main.SubCommand):
             os.chmod(tokname, 0600)
         # note: no api.logout()!
         api.close()
-        self.write('Successfully logged in.')
+        self.stdout.write('Successfully logged in.\n')

@@ -90,18 +90,13 @@ class CommandBase(object):
                                        description=subcmd.description)
             subcmd.add_args(parser, level+1)
 
-    def read(self, prompt):
+    def prompt(self, prompt):
         """Prompt the user for a line of input."""
         return raw_input(prompt)
 
     def getpass(self, prompt):
         """Prompt the user for a password."""
         return getpass.getpass(prompt)
-
-    def write(self, message):
-        """Write a line of text to standard output."""
-        self.stdout.write(message)
-        self.stdout.write('\n')
 
     def error(self, message):
         """Write a line of text to standard error."""
