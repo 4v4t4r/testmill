@@ -104,6 +104,7 @@ class CopyTask(Task):
         fab.run('mkdir %s' % fab.env.testid)
         for glob in self.files:
             fab.put(glob, fab.env.testid)
+        fab.run('ln -sf %s last' % fab.env.testid)
 
 
 class UnpackTask(Task):
