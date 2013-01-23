@@ -23,7 +23,7 @@ class PsCommand(main.SubCommand):
 
     name = 'ps'
     usage = textwrap.dedent("""\
-            usage: ravtest ps
+            usage: ravtest [OPTION]... ps
             """)
     description = textwrap.dedent("""\
             Show your running applications in Ravello.

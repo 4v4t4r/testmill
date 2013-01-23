@@ -31,7 +31,7 @@ class MainCommand(command.CommandBase):
 
     usage = textwrap.dedent("""\
             usage: ravtest [-u <user>] [-p <password>] [-s <service_url>]
-                           [-q] [-d] [-y] [-h] <command> [<args>]
+                           [-q] [-d] [-y] [-h] <command> [<arg>]...
                        """)
     description = textwrap.dedent("""\
         Ravello TestMill, a system test driver for Ravello.
@@ -52,32 +52,29 @@ class MainCommand(command.CommandBase):
             -h, --help
                 Show help
             
-        The available sub-commands are:
+        The available commands are:
             login       log in to Ravello
             ps          show running applications
             run         run a remote command
+
+        Use 'ravtest <command> --help' to get help for a command.
         """)
 
     def __init__(self):
         super(MainCommand, self).__init__()
-        from . import login, ps, run
+        from . import login, ps, run, ssh
         self.add_sub_command(login.LoginCommand(parent=self))
         self.add_sub_command(ps.PsCommand(parent=self))
         self.add_sub_command(run.RunCommand(parent=self))
 
-    def add_args(self, parser):
-        super(MainCommand, self).add_args(parser)
+    def add_args(self, parser, level=0):
+        super(MainCommand, self).add_args(parser, level)
         parser.add_argument('-u', '--user')
         parser.add_argument('-p', '--password')
         parser.add_argument('-s', '--service-url')
         parser.add_argument('-q', '--quiet', action='store_true')
         parser.add_argument('-d', '--debug', action='store_true')
         parser.add_argument('-y', '--yes', action='store_true')
-
-    def parse_args(self, args=None, defaults=None):
-        if sys.platform.startswith('win'):
-            sys.argv[0] = sys.argv[0][:-10]
-        super(MainCommand, self).parse_args(args, defaults)
 
 
 class SubCommand(command.CommandBase):

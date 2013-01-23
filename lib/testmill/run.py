@@ -193,16 +193,16 @@ class RunCommand(main.SubCommand):
 
     name = 'run'
     usage = textwrap.dedent("""\
-            usage: ravtest run <command>
+            usage: ravtest [OPTION]... run [<command>]
             """)
     description = textwrap.dedent("""\
             Run a command in one or more Ravello applications.  The
             applications are specified in the  manifest (.ravello.yml) .
 
             The available options are:
-                -A <applist>, --applications <applist>
+                -E <environments>, --environments <envlist>
                     Only run the command on these applications.
-                    <applist> is a comma-separated list of names
+                    <envlist> is a comma-separated list of names
                 -c, --continue
                     Continue running even after an error
                 --new
@@ -211,7 +211,7 @@ class RunCommand(main.SubCommand):
                     Dump the manifest and exit
             """)
 
-    def add_args(self, parser):
+    def add_args(self, parser, level=None):
         parser.add_argument('--environments', '-E')
         parser.add_argument('--continue', '-c', action='store_true',
                             dest='continue_')

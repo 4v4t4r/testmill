@@ -19,17 +19,22 @@ import getpass
 import argparse
 
 
+class AbortParsing(Exception):
+    """Used by the "store_and_abort" action to abort parsing."""
+
+
 class ArgumentParser(argparse.ArgumentParser):
     """An ArgumentParser that gives us more control over the
     formatting of the help texts.
     """
 
-    class show_help(argparse.Action):
-        def __call__(self, parser, ns, vals, opts):
-            if not getattr(ns, 'command', None):
-                parser.print_help()
-                parser.exit(0)
-            ns.help = True
+    class store_and_abort(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            if self.const is not None:
+                setattr(namespace, self.dest, self.const)
+            else:
+                setattr(namespace, self.dest, values)
+            raise AbortParsing(namespace)
 
     def format_help(self):
         parts = [self.usage, self.description]
@@ -37,6 +42,13 @@ class ArgumentParser(argparse.ArgumentParser):
 
     def format_usage(self):
         return self.usage
+
+    def parse_args(self, argv=None, namespace=None):
+        try:
+            args = super(ArgumentParser, self).parse_args(argv, namespace)
+        except AbortParsing as e:
+            args = e[0]
+        return args
 
 
 class CommandBase(object):
@@ -64,34 +76,19 @@ class CommandBase(object):
         """
         self.sub_commands.append(command)
 
-    def add_args(self, parser):
+    def add_args(self, parser, level=0):
         """Add command-line arguments to `parser`.
 
-        This method should be provided by a subclass. The default
-        implementation adds a positional argument "command" if there are
-        sub-commands.
+        This method should be extended by a subclass. The default
+        implementation adds the parsers for the sub commands, if any.
         """
         if not self.sub_commands:
             return
-        parser.add_argument('command')
-
-    def parse_args(self, args=None, defaults=None):
-        """Parse arguments."""
-        parser = ArgumentParser(usage=self.usage, description=self.description,
-                                add_help=False)
-        parser.add_argument('-h', '--help', action=parser.show_help, nargs=0)
-        self.add_args(parser)
-        if defaults and defaults.help:
-            args.insert(0, '--help')
-        args, remaining = parser.parse_known_args(args)
-        if remaining and not self.sub_commands:
-            parser.error('unrecognized arguments: %s' % ' '.join(remaining))
-        if defaults:
-            defaults.__dict__.update(args.__dict__)
-            args = defaults
-        self.args = args
-        self.remaining = remaining
-        self.parser = parser
+        action = parser.add_subparsers(dest='__subcmd_{}'.format(level))
+        for subcmd in self.sub_commands:
+            parser = action.add_parser(subcmd.name, usage=subcmd.usage,
+                                       description=subcmd.description)
+            subcmd.add_args(parser, level+1)
 
     def read(self, prompt):
         """Prompt the user for a line of input."""
@@ -116,28 +113,44 @@ class CommandBase(object):
         sys.exit(status)
 
     def run(self, args):
-        """Run the command.
-        
-        This method needs to be provided by a subclass. However, in case there
-        are sub-commands, there is a default implementation that just calls
-        into the right sub-command.
-        """
-        if not self.sub_commands:
-            raise NotImplementedError
-        command = args.command
-        for subcmd in self.sub_commands:
-            if subcmd.name == command:
-                subcmd.parse_args(self.remaining, args)
-                subcmd.run(subcmd.args)
-                break
-        else:
-            self.error('Error: no such command: %s' % command)
+        """Run the command. Needs to be implemented by a subclass."""
+        raise NotImplementedError
 
-    def main(self, argv=None):
+    def parse_args(self, argv=None, defaults=None):
+        if sys.platform.startswith('win'):
+            sys.argv[0] = sys.argv[0].rstrip('-script.py')
+        parser = ArgumentParser(usage=self.usage, description=self.description)
+        self.add_args(parser)
+        args = parser.parse_args(argv, defaults)
+        commands = []
+        for name in dir(args):
+            if not name.startswith('__subcmd_'):
+                continue
+            commands.append((int(name[9:]), getattr(args, name)))
+            delattr(args, name)
+        args.commands = [name for ix,name in sorted(commands)]
+        return args
+
+    def get_subcommand(self, commands):
+        cmd = self
+        for name in commands:
+            for subcmd in cmd.sub_commands:
+                if subcmd.name == name:
+                    cmd = subcmd
+                    break
+            else:
+                name = '/'.join(self.args.commands.names)
+                self.error('sub command {} not found!'.format(name))
+        return cmd
+
+    def main(self, argv=None, defaults=None):
         """Main entry point."""
         try:
-            self.parse_args(argv)
-            status = self.run(self.args)
+            args = self.parse_args(argv, defaults)
+            cmd = self.get_subcommand(args.commands)
+            self.sub_command = cmd
+            cmd.args = args
+            status = cmd.run(cmd.args)
         except SystemExit as e:
             status = e[0]
         if status is None:

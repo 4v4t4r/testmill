@@ -26,7 +26,7 @@ class LoginCommand(main.SubCommand):
 
     name = 'login'
     usage = textwrap.dedent("""\
-            usage: ravtest login
+            usage: ravtest [OPTION]... login [<username>]
             """)
     description = textwrap.dedent("""\
             Logs into Ravello and stores a temporary token granting access
