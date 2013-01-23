@@ -184,7 +184,7 @@ class SshCommand(main.SubCommand):
             if not sys.platform.startswith('win'):
                 # On Unix use execve(). This is the most efficient.
                 argv = ['ssh', '-i', self.privkey_file,
-                        '-o', 'UserKnownHostsFile=/dev/null'
+                        '-o', 'UserKnownHostsFile=/dev/null',
                         '-o', 'StrictHostKeyChecking=no',
                         '-o', 'LogLevel=quiet',
                         '-t', host, command]
