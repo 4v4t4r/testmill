@@ -91,25 +91,41 @@ def get_config_dir():
     return configdir
 
 
+pathext = None
+
+def _exists(fname):
+    """Check if an executable exists at `fname`.
+
+    On Windows, this takes into account the %PATHEXT% environment variable.
+    """
+    global pathext
+    if pathext is None:
+        if sys.platform.startswith('win'):
+            pathext = os.environ.get('PATHEXT', '').split(os.path.pathsep)
+        else:
+            pathext = []
+    if os.access(fname, os.X_OK):
+        return fname
+    for ext in pathext:
+        if os.access(fname + ext, os.X_OK):
+            return fname
+
 def which(cmd):
     """Find an executable in $PATH."""
     if os.path.isabs(cmd):
-        if os.access(cmd, os.X_OK):
-            return cmd
-        return
+        return _exists(cmd)
     elif cmd.startswith('.'):
         cwd = os.getcwd()
         fname = os.path.normpath(os.path.join(cwd, cmd))
-        if os.access(fname, os.X_OK):
-            return fname
-        return
+        return _exists(fname)
     path = os.environ.get('PATH')
     if not path:
         return
     for elem in path.split(os.path.pathsep):
         fname = os.path.normpath(os.path.join(elem, cmd))
-        if os.access(fname, os.X_OK):
-            return fname
+        expn = _exists(fname)
+        if expn:
+            return expn
 
 
 def find_openssh():
@@ -121,10 +137,3 @@ def find_openssh():
     _, version = cmd.communicate()
     if cmd.returncode == 0 and 'OpenSSH' in version:
         return ssh
-
-def get_devnull():
-    """Return /dev/null or its equivalent."""
-    if not sys.platform.startswith('win'):
-        return '/dev/null'
-    else:
-        return 'NUL'

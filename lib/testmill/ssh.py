@@ -181,12 +181,26 @@ class SshCommand(main.SubCommand):
         interactive = os.isatty(sys.stdin.fileno())
 
         if interactive and openssh:
-            devnull = util.get_devnull()
-            argv = ['ssh', '-i', self.privkey_file,
-                    '-o', 'UserKnownHostsFile={}'.format(devnull),
-                    '-o', 'StrictHostKeyChecking=no', '-o', 'LogLevel=quiet',
-                    '-t', host, command]
-            os.execve(openssh, argv, os.environ)
+            if not sys.platform.startswith('win'):
+                # On Unix use execve(). This is the most efficient.
+                argv = ['ssh', '-i', self.privkey_file,
+                        '-o', 'UserKnownHostsFile=/dev/null'
+                        '-o', 'StrictHostKeyChecking=no',
+                        '-o', 'LogLevel=quiet',
+                        '-t', host, command]
+                os.execve(openssh, argv, os.environ)
+            else:
+                # Windows has execve() but for some reason it does not work
+                # well with arguments with spaces in it. So use subprocess
+                # instead.
+                command = [openssh, '-i', self.privkey_file,
+                           '-o', 'UserKnownHostsFile=NUL',
+                           '-o', 'StrictHostKeyChecking=no',
+                           '-o', 'LogLevel=quiet',
+                           '-t', host, command]
+                ssh = subprocess.Popen(command)
+                ret = ssh.wait()
+                self.exit(ret)
 
         # TODO: should also support PuTTY on Windows
 
