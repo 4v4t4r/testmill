@@ -17,12 +17,14 @@ from __future__ import absolute_import, print_function
 import os
 import sys
 import stat
-import json
+import yaml
 
 
-def pprint(obj):
-    """Pretty-print a dictionary."""
-    print(json.dumps(obj, sort_keys=True, indent=2))
+def prettify(obj):
+    """Pretty print a parsed YAML document."""
+    Dumper = yaml.SafeDumper
+    Dumper.ignore_aliases = lambda self, data: True
+    return yaml.dump(obj, Dumper=Dumper, default_flow_style=False, indent=4)
 
 
 def splitname(name, sep=':'):

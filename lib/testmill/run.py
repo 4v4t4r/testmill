@@ -216,7 +216,8 @@ class RunCommand(main.SubCommand):
         parser.add_argument('--continue', '-c', action='store_true',
                             dest='continue_')
         parser.add_argument('--new', action='store_true')
-        parser.add_argument('--dump', action='store_true')
+        parser.add_argument('--dump', action=parser.store_and_abort,
+                            nargs=0, default=False, const=True)
         parser.add_argument('command', nargs='?')
 
     def _try_use_existing_keypair(self):
@@ -660,7 +661,7 @@ class RunCommand(main.SubCommand):
 
         # Some more argument parsing
         if args.dump:
-            util.pprint(manifest)
+            self.stdout.write(util.prettify(manifest))
             self.exit(0)
         if args.environments:
             envs = [env.lower() for env in args.environments.split(',')]
