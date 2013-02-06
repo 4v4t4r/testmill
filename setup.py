@@ -14,10 +14,12 @@
 
 from setuptools import setup
 
+__version__ = '0.9.5.dev'
+
 
 version_info = {
     'name': 'ravello-testmill',
-    'version': '0.9.4',
+    'version': __version__,
     'description': 'A system test driver for Ravello',
     'author': 'Geert Jansen',
     'author_email': 'geert.jansen@ravellosystems.com',
@@ -31,6 +33,7 @@ version_info = {
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.2',
         'Programming Language :: Python :: 3.3'
     ]
 }

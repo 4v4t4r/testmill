@@ -2,79 +2,45 @@
 # Default manifest for Ravello TestMill
 
 defaults:
-  keep: 90
-  renew:
-    task: testmill.run:RenewTask
-  pack:
-    task: testmill.run:PackTask
-  copy:
-    task: testmill.run:CopyTask
-  unpack:
-    task: testmill.run:UnpackTask
-  sysinit:
-    task: testmill.run:SysinitTask
-  prepare:
-    task: testmill.run:PrepareTask
-  execute:
-    task: testmill.run:ExecuteTask
-  cleanup:
-    task: testmill.run:CleanupTask
+    applications:
+        keepalive: 90
+    vms:
+        tasks:
+        -   name: deploy
+            quiet: true
+            class: testmill.tasks.DeployTask
+        -   name: sysinit
+            quiet: true
+            class: testmill.tasks.SysinitTask
+        -   name: prepare
+            quiet: true
+            class: testmill.tasks.Task
+        -   name: execute
+            quiet: false
+            class: testmill.tasks.Task
 
-language_defaults:
-  python:
-    pack:
-      commands:
-      - "rm -f dist/*; python setup.py sdist"
-    copy:
-      files: dist
-    unpack:
-      commands:
-      - "tar xvfz dist/*.tar.gz --strip-components=1"
-    prepare:
-      commands:
-      - "test -f requirements.txt && sudo pip install -r requirements.txt || true; python setup.py build"
-    execute:
-      commands:
-      - "python setup.py test"
-
-  clojure:
-    pack:
-      commands:
-      - "mkdir -p dist; tar cfvz dist/ravello-dist.tar.gz . --exclude dist --exclude target --exclude lib --exclude doc --exclude pkg"
-    copy:
-      files: dist/ravello-dist.tar.gz
-    unpack:
-      commands:
-      - "tar xvfz ravello-dist.tar.gz; rm -f ravello-dist.tar.gz"
-    execute:
-      commands:
-      - "lein test"
-
-  java_maven:
-    pack:
-      commands:
-      - "mkdir -p dist; tar cfvz dist/ravello-dist.tar.gz . --exclude dist --exclude target"
-    copy:
-      files: dist/ravello-dist.tar.gz
-    unpack:
-      commands:
-      - "tar xvfz ravello-dist.tar.gz; rm -f ravello-dist.tar.gz"
-    execute:
-      commands:
-      - "mvn test"
-
-  java_ant:
-    pack:
-      commands:
-      - "mkdir -p dist; tar cfvz dist/ravello-dist.tar.gz . --exclude dist --exclude target"
-    copy:
-      files: dist/ravello-dist.tar.gz
-    unpack:
-      commands:
-      - "tar xvfz ravello-dist.tar.gz; rm -f ravello-dist.tar.gz"
-    execute:
-      commands:
-      - "ant test"
-
-language: null
-environments: []
+languages:
+    nodefaults: {}
+    python:
+        detect: [ 'setup.py' ]
+        applications:
+            prepare:
+            -   "if test -f requirements.txt; then sudo pip install -r requirements.txt; fi"
+            -   "python setup.py build"
+            execute:
+            -   "python setup.py test"
+    clojure:
+        detect: [ 'project.clj' ]
+        applications:
+            execute:
+            -   "lein test"
+    maven:
+        detect: [ 'pom.xml' ]
+        applications:
+            execute:
+            -   "mvn test"
+    ant:
+        detect: [ 'build.xml' ]
+        applications:
+            execute:
+            -   "ant test"

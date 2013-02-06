@@ -12,57 +12,65 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
 
-import sys
 import os
-import os.path
-import textwrap
-
-from . import ravello, main, util
+from testmill import console, error, util, ravello
+from testmill.state import env
 
 
-class LoginCommand(main.SubCommand):
+def password_login():
+    """Try to log in with a username and password."""
+    try:
+        env.api.login(env.username, env.password)
+    except ravello.RavelloError as e:
+        error.raise_error('Could not login to Ravello ({!s})\n'
+                          'Check your username and password.', e)
 
-    name = 'login'
-    usage = textwrap.dedent("""\
-            usage: ravtest [OPTION]... login [<username>]
-            """)
-    description = textwrap.dedent("""\
-            Logs into Ravello and stores a temporary token granting access
-            to your account in your home directory.
-            """)
 
-    def add_args(self, parser, level=None):
-        parser.add_argument('username', nargs='?')
+def token_login():
+    """Try to log in with a token."""
+    cfgdir = util.get_config_dir()
+    tokfile = os.path.join(cfgdir, 'api-token')
+    try:
+        with file(tokfile) as ftok:
+            token = ftok.read()
+    except IOError:
+        error.raise_error('Not logged in')
+    token = token.strip()
+    try:
+        env.api.login(token=token)
+    except ravello.RavelloError as e:
+        error.raise_error('Token has expired.\n'
+                          "Use 'ravtest login' to refresh.")
 
-    def run(self, args):
-        """The "ravello login" command."""
-        username = args.username or args.user
-        password = args.password
-        if username is None:
-            self.stdout.write('Enter your Ravello credentials.\n')
-        try:
-            if username is None:
-                username = self.prompt('Username: ')
-            if password is None:
-                password = self.getpass('Password: ')
-        except KeyboardInterrupt:
-            self.stdout.write('\n')
-            self.exit(0)
-        api = ravello.RavelloClient(service_url=args.service_url)
-        try:
-            api.login(username, password)
-        except ravello.RavelloError as e:
-            self.error('Error: login failed ({!s})'.format(e))
-            self.exit(1)
-        cfgdir = util.get_config_dir()
-        tokname = os.path.join(cfgdir, 'api-token')
-        with file(tokname, 'w') as ftok:
-            ftok.write(api._cookie)
-            ftok.write('\n')
-        if hasattr(os, 'chmod'):
-            os.chmod(tokname, 0600)
-        # note: no api.logout()!
-        api.close()
-        self.stdout.write('Successfully logged in.\n')
+
+def store_token():
+    """Store the login token."""
+    cfgdir = util.get_config_dir()
+    tokname = os.path.join(cfgdir, 'api-token')
+    with file(tokname, 'w') as ftok:
+        ftok.write(env.api._cookie)
+        ftok.write('\n')
+    if hasattr(os, 'chmod'):
+        os.chmod(tokname, 0600)
+
+
+def remove_token():
+    """Remove the login token."""
+    cfgdir = util.get_config_dir()
+    tokname = os.path.join(cfgdir, 'api-token')
+    try:
+        st = os.stat(tokname)
+    except OSError:
+        return
+    os.unlink(tokname)
+
+
+def default_login():
+    """Login function. Used by most sub-commands to ensure there is a valid
+    connection to the Ravello API."""
+    if env.username and env.password:
+        password_login()
+    else:
+        token_login()

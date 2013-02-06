@@ -14,12 +14,27 @@
 
 from __future__ import absolute_import, print_function
 
-import testmill.state
-from testmill import util
-from testmill.ravello import *
+import textwrap
+from testmill import console, login
 
 
-def packagedir():
-    import os.path
-    dirname, _ = os.path.split(__file__)
-    return dirname
+usage = textwrap.dedent("""\
+        usage: ravtest [OPTION]... logout
+               ravtest logout --help
+        """)
+
+description = textwrap.dedent("""\
+        Log out from the Ravello Service.
+        """)
+
+
+def add_args(parser):
+    """Add command-line options for "ravello login"."""
+    parser.usage = usage
+    parser.description = description
+
+
+def do_logout(args, env):
+    """The "ravello logout" command."""
+    login.remove_token()
+    console.info('Logged out.')

@@ -25,7 +25,8 @@ def prettify(obj):
     """Pretty print a parsed YAML document."""
     Dumper = yaml.SafeDumper
     Dumper.ignore_aliases = lambda self, data: True
-    return yaml.dump(obj, Dumper=Dumper, default_flow_style=False, indent=4)
+    return yaml.dump(obj, Dumper=Dumper, default_flow_style=False,
+                     indent=4, width=500)
 
 
 def splitname(name, sep=':'):
@@ -53,7 +54,7 @@ def get_unused_name(name, current, sep=':'):
 
 def load_class(name):
     """Load a class specifies as package:ClassName."""
-    pkg, cls = splitname(name)
+    pkg, cls = splitname(name, '.')
     try:
         mod = __import__(pkg)
         for subpkg in pkg.split('.')[1:]:
@@ -64,20 +65,19 @@ def load_class(name):
     return cls
 
 
-def merge(base, update):
-    """Merge the dictionary `update` into `base`."""
-    for key,value in update.items():
-        if key not in base:
-            base[key] = value
-        elif isinstance(base[key], dict) and isinstance(value, dict):
-            merge(base[key], value)
+def get_ravello_dir():
+    """Get the Ravello directory. Either '.ravello' or '_ravello'."""
+    if not sys.platform.startswith('win'):
+        return '.ravello'
+    else:
+        return '_ravello'
 
 
 def get_config_dir():
     """Get the local configuration directory, creating it if it doesn't
     exist."""
     homedir = os.path.expanduser('~')
-    subdir = '.ravello' if not sys.platform.startswith('win') else '_ravello'
+    subdir = get_ravello_dir()
     configdir = os.path.join(homedir, subdir)
     try:
         st = os.stat(configdir)
@@ -86,27 +86,32 @@ def get_config_dir():
     if st is None:
         os.mkdir(configdir)
     elif st and not stat.S_ISDIR(st.st_mode):
-        m = '{0} exists but is not a directory'
+        m = '{} exists but is not a directory'
         raise OSError(m.format(configdir))
     return configdir
 
 
-pathext = None
+def get_human_readable_config_dir():
+    """Return a human readable version of the configuration directory."""
+    if not sys.platform.startswith('win'):
+        return '~/.ravello'
+    else:
+        return '%HOME%\\_ravello'
+
+
+_pathext = []
 
 def _exists(fname):
     """Check if an executable exists at `fname`.
 
     On Windows, this takes into account the %PATHEXT% environment variable.
     """
-    global pathext
-    if pathext is None:
+    if not _pathext:
+        _pathext.append('')
         if sys.platform.startswith('win'):
-            pathext = os.environ.get('PATHEXT', '').split(os.path.pathsep)
-        else:
-            pathext = []
-    if os.access(fname, os.X_OK):
-        return fname
-    for ext in pathext:
+            pathext = os.environ.get('PATHEXT', '')
+            _pathext.append(pathext.split(os.path.pathsep))
+    for ext in _pathext:
         if os.access(fname + ext, os.X_OK):
             return fname
 
@@ -137,3 +142,52 @@ def find_openssh():
     _, version = cmd.communicate()
     if cmd.returncode == 0 and 'OpenSSH' in version:
         return ssh
+
+
+def shell_escape(s):
+    """Shell escape the string ``s``."""
+    escaped =  "'" + s.replace("'", "'\"\'\"'") + "'"
+    return escaped
+
+
+def format_service(vm, svc):
+    addr = vm['dynamicMetadata']['externalIp']
+    port = svc['portRange']
+    if port == '80':
+        addr = 'http://{}/'.format(addr)
+    elif port == '443':
+        addr = 'https://{}/'.format(addr)
+    elif port == '8080':
+        addr = 'http://{}:{}/'.format(addr, port)
+    elif port == '8443':
+        addr = 'https://{}:{}/'.format(addr, port)
+    else:
+        addr = '{} port {}'.format(addr, port)
+    return addr
+
+
+def format_timedelta(t):
+    t = int(t)
+    if t < 5:
+        return 'just now'
+    elif t < 60:
+        return '< 1 minute'
+    elif t < 3600:
+        count = t//60
+        unit = plural_noun('minute', count)
+        return '{} {}'.format(count, unit)
+    elif t < 86400:
+        count = t//3600
+        unit = plural_noun('hour', count)
+        return '{} {}'.format(count, unit)
+    else:
+        count = t//86400
+        unit = plural_noun('day', count)
+        return '{} {}'.format(count, unit)
+    
+
+def plural_noun(noun, count):
+    if count == 1:
+        return noun
+    else:
+        return noun + 's'

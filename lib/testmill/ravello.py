@@ -22,9 +22,8 @@ import httplib
 import logging
 import ssl
 
+__all__ = ('update_luids', 'RavelloError', 'RavelloClient')
 
-OK_CODES = frozenset((httplib.OK, httplib.CREATED, httplib.ACCEPTED,
-                      httplib.NO_CONTENT))
 
 def random_luid():
     rnd = os.urandom(7) + '\x00'
@@ -44,52 +43,6 @@ def update_luids(obj):
         for elem in obj:
             update_luids(elem)
     return obj
-
-
-# Very simple DTO object
-
-class Resource(dict):
-    """API resource."""
-
-    @classmethod
-    def fromjson(cls, s):
-        try:
-            parsed = json.loads(s)
-        except Exception:
-            raise ValueError('could not parse JSON')
-        if not isinstance(parsed, dict):
-            raise TypeError('expecting JSON array')
-        self = cls()
-        self.update(parsed)
-        return self
-
-    def tojson(self):
-        return json.dumps(s, sort_keys=True, indent=2)
-
-    def copy(self):
-        return type(self)(self)
-
-
-class Project(Resource):
-    """A project."""
-
-class User(Resource):
-    """A user."""
-
-class Application(Resource):
-    """An application."""
-
-class Blueprint(Resource):
-    """A blueprint."""
-
-class Keypair(Resource):
-    """A public/private key pair."""
-
-class Pubkey(Resource):
-    """A public key."""
-
-class VM(Resource):
-    """A virtual machine."""
 
 
 # The API client
@@ -128,10 +81,13 @@ class RavelloClient(object):
     default_timeout = 30
     default_url = 'https://cloud.ravellosystems.com/services'
 
+    ok_codes = set((httplib.OK, httplib.CREATED, httplib.ACCEPTED,
+                    httplib.NO_CONTENT))
+
     def __init__(self, username=None, password=None, service_url=None,
                  token=None, retries=None, timeout=None):
         """Create a new connection."""
-        self.logger = logging.getLogger('ravello')
+        self.logger = logging.getLogger('testmill')
         self.username = username
         self.password = password
         self._set_url(service_url)
@@ -142,6 +98,32 @@ class RavelloClient(object):
         self._cookie = None
         self._project = None
         self._total_retries = 0
+
+    def __getstate__(self):
+        """Pickle protocol."""
+        state = self.__dict__.copy()
+        state['logger'] = None
+        if state['connection']:
+            state['connection'] = True
+        return state
+
+    def __setstate__(self, state):
+        """Pickle protocol."""
+        self.__dict__.update(state)
+        self.logger = logging.getLogger('ravello')
+        if self.connection:
+            self._connect()
+
+    def __repr__(self):
+        res = '<{}({!r})'.format(self.__class__.__name__, self.url)
+        if self._cookie:
+            res += ', <AUTHENTICATED>'
+        elif self.connection:
+            res += ', <CONNECTED>'
+        else:
+            res += ', <DISCONNECTED>'
+        res += '>'
+        return res
 
     def _set_url(self, url):
         """Parse and set the service URL."""
@@ -212,7 +194,7 @@ class RavelloClient(object):
         ctype = response.getheader('Content-Type')
         log.debug('API response: {}, {} bytes, ({})' \
                 .format(response.status, len(body), ctype))
-        if response.status not in OK_CODES:
+        if response.status not in self.ok_codes:
             raise RavelloError('operation failed', response.status)
         if ctype == 'application/json':
             try:
@@ -237,7 +219,6 @@ class RavelloClient(object):
 
     def _connect(self):
         """Low-level connect."""
-        assert self.connection is None
         log = self.logger
         if self.scheme == 'http':
             conn_class = httplib.HTTPConnection
@@ -248,7 +229,6 @@ class RavelloClient(object):
         connection.connect()
         log.debug('connected')
         self.connection = connection
-        self._cookie = None
 
     def close(self):
         """Close the connection."""
@@ -277,7 +257,6 @@ class RavelloClient(object):
 
     def _login(self):
         """Low-level login."""
-        assert self._cookie is None
         log = self.logger
         if self.username:
             log.debug('performing a new login')
@@ -302,7 +281,7 @@ class RavelloClient(object):
             self.hello()  # Make sure the token works
             log.debug('token is valid')
         else:
-            raise RuntimeError('canot login: no username/password or token')
+            raise RuntimeError('cannot login: no username/password or token')
         # Also figure out the default project.
         if self._project is None:
             projects = self.get_projects()
@@ -323,21 +302,19 @@ class RavelloClient(object):
     def get_user(self):
         """Return the currently logged in user."""
         response = self._make_request('GET', '/user')
-        return User(response.entity)
+        return response.entity
 
     def get_project(self, id):
         """Return a single project."""
         response = self._make_request('GET', '/projects/%s' % id)
-        return Project(response.entity['project'])
+        return response.entity['project']
 
     def get_projects(self):
         """Return a list of all projects in the organization of the
         authenticating user.
         """
-        projects = []
         response = self._make_request('GET', '/projects')
-        for proj in response.entity.get('project', []):
-            projects.append(Project(proj))
+        projects = response.entity.get('project', [])
         return projects
 
     # Key pairs and public keys
@@ -353,9 +330,7 @@ class RavelloClient(object):
     def get_pubkeys(self):
         """Get the public keys."""
         response = self._make_request('GET', '/keypairs/%s' % self._project)
-        pubkeys = []
-        for pubkey in response.entity.get('keypair', []):
-            pubkeys.append(Pubkey(pubkey))
+        pubkeys = response.entity.get('keypair', [])
         return pubkeys
 
     def create_pubkey(self, pubkey):
@@ -363,29 +338,29 @@ class RavelloClient(object):
         request = pubkey.copy()
         request['projectId'] = self._project
         response = self._make_request('POST', '/keypair', request)
-        return Pubkey(response.entity)
+        return response.entity
 
     def create_keypair(self):
         """Create a newly generate keypair."""
         response = self._make_request('GET', '/keypair/random')
-        return Keypair(response.entity)
+        return response.entity
 
     # Images (= saved VMs)
 
     def get_image(self, id):
         """Return a single image."""
         response = self._make_request('GET', '/images/%s' % id)
-        return VM(response.entity['value'])
+        return response.entity['value']
 
     def get_images(self):
         """Return a list of all images."""
         images = []
         response = self._make_request('GET', '/images/public')
         for image in response.entity.get('imageMetadata', []):
-            images.append(VM(image, public=True))
+            images.append(dict(image, public=True))
         response = self._make_request('GET', '/images/private')
         for image in response.entity.get('imageMetadata', []):
-            images.append(VM(image, public=False))
+            images.append(dict(image, public=False))
         return images
 
     # Applications
@@ -393,7 +368,7 @@ class RavelloClient(object):
     def get_application(self, id):
         """Get a single application."""
         response = self._make_request('GET', '/instance/%s' % id)
-        app = Application(response.entity)
+        app = response.entity
         # TODO: does it make sense to have "appMetadata" be the "real"
         # application and put it at the top-level?
         for key in list(app['appMetadata']):
@@ -404,9 +379,7 @@ class RavelloClient(object):
     def get_applications(self):
         """Return all applications."""
         response = self._make_request('GET', '/instances/%s' % self._project)
-        applications = []
-        for app in response.entity.get('appMetadata', []):
-            applications.append(Application(app))
+        applications = response.entity.get('appMetadata', [])
         return applications
 
     def create_application(self, application):
@@ -417,7 +390,7 @@ class RavelloClient(object):
                 application['appMetadata'][key] = application[key]
                 del application[key]
         response = self._make_request('POST', '/instance', application)
-        application = Application(response.entity)
+        application = response.entity
         for key in list(application['appMetadata']):
             application[key] = application['appMetadata'][key]
         del application['appMetadata']
@@ -446,7 +419,7 @@ class RavelloClient(object):
     def get_blueprint(self, id):
         """Get a single blueprint."""
         response = self._make_request('GET', '/blueprint/%s' % id)
-        bp = Blueprint(response.entity)
+        bp = response.entity
         for key in list(bp['appMetadata']):
             bp[key] = bp['appMetadata'][key]
         del bp['appMetadata']
@@ -455,7 +428,5 @@ class RavelloClient(object):
     def get_blueprints(self):
         """Return all blueprints."""
         response = self._make_request('GET', '/blueprints/%s' % self._project)
-        blueprints = []
-        for bp in response.entity.get('appMetadata', []):
-            blueprints.append(Blueprint(bp))
+        blueprints = response.entity.get('appMetadata', [])
         return blueprints
