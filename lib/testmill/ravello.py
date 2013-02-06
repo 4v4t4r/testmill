@@ -22,7 +22,7 @@ import httplib
 import logging
 import ssl
 
-__all__ = ('update_luids', 'RavelloError', 'RavelloClient')
+__all__ = ('random_luid', 'update_luids', 'RavelloError', 'RavelloClient')
 
 
 def random_luid():
