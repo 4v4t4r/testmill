@@ -1,6 +1,6 @@
 project:
     name: testmilltest
-    language: clojure
+    language: maven
 applications:
 -   name: platformtest
     vms:

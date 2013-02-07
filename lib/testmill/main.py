@@ -20,8 +20,6 @@ import textwrap
 import traceback
 
 from testmill import argparse, console, ravello, error
-from testmill import (command_login, command_ps, command_lint,
-                      command_logout, command_run, command_ssh)
 from testmill.state import env
 
 
@@ -64,6 +62,8 @@ description = textwrap.dedent("""\
     """)
 
 
+from testmill import (command_login, command_ps, command_lint,
+                      command_logout, command_run, command_ssh)
 
 subcommands = {
     'login': (command_login.do_login, command_login.add_args),
@@ -93,7 +93,7 @@ def create_parser():
     return parser
 
 
-def parse_args(parser):
+def parse_args(parser, argv=None):
     """Parse aguments."""
     # Parse general arguments, extract the command, add command-specific
     # arguments, and then re-parse everything again.
@@ -104,7 +104,7 @@ def parse_args(parser):
     # to mistakenly pass options out of order, we imlement our own solution
     # here that accepts the options in this case.
     try:
-        args = parser.parse_args()
+        args = parser.parse_args(argv)
     except argparse.ParseError as e:
         args = e.namespace
         if not args.help and not args.subcmd:
@@ -121,7 +121,7 @@ def parse_args(parser):
     add_args = subcommands[subcmd][1]
     add_args(parser)
     try:
-        args = parser.parse_args()
+        args = parser.parse_args(argv)
     except argparse.ParseError as e:
         args = e.namespace
         if not args.help:
@@ -158,10 +158,10 @@ def setup_logging():
     logger.addHandler(handler)
 
 
-def main():
+def main(argv=None):
     """The "ravtest" main entry point."""
     parser = create_parser()
-    args = parse_args(parser)
+    args = parse_args(parser, argv)
     create_environment(args)
     setup_logging()
     command = subcommands[args.subcmd][0]

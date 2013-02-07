@@ -19,29 +19,35 @@ import sys
 import subprocess
 from nose import SkipTest
 
-import testmill
-import testmill.test
+from testmill import util
+from testmill.main import main
+from testmill.state import env
+from testmill.test import *
 
 
-class TestSSH(testmill.test.UnitTest):
+class TestSSH(TestSuite):
     """Test the "ravtest ssh" command."""
 
     @classmethod
     def setup_class(cls):
         super(TestSSH, cls).setup_class()
-        command = testmill.MainCommand()
         # Ensure a "fedora17" application is started up.
-        project = os.path.join(cls.topdir, 'examples', 'nolang')
+        project = os.path.join(topdir(), 'examples', 'platforms')
         os.chdir(project)
-        status = command.main(['-u', cls.username, '-p', cls.password,
-                               '-s', cls.service_url, 'run', 'true'])
-        if status != 0:
-            raise SkipTest('Could not start application')
-        # XXX: using too much internal information here
-        cls.applications = command.sub_command.applications
+        with env.new():
+            status = main(['-u', testenv.username, '-p', testenv.password,
+                           '-s', testenv.service_url,
+                           'run', 'platformtest', 'true'])
+            if status != 0:
+                raise SkipTest('Could not start application')
+            cls.appdef = env.appdef
+            cls.application = env.application
+        project, appname, instance = cls.application['name'].split(':')
+        cls.appname = '{}:{}'.format(appname, instance)
+        os.environ['PYTHONPATH'] = os.path.join(topdir(), 'lib')
 
     def test_openssh(self):
-        openssh = testmill.util.find_openssh()
+        openssh = util.find_openssh()
         if openssh is None:
             raise SkipTest('openssh is needed for this test')
         if sys.platform.startswith('win'):
@@ -50,43 +56,41 @@ class TestSSH(testmill.test.UnitTest):
             import pexpect
         except ImportError:
             raise SkipTest('this test requires pexpect')
-        # Fire up a new Python progress using pexpect. Pexpect will assign a
+        # Fire up a new Python process using pexpect. Pexpect will assign a
         # PTY, and therefore the child will use openssh.
-        assert len(self.applications) >= 4
-        for app in self.applications:
-            libdir = os.path.join(self.topdir, 'lib')
-            args = ['-mtestmill.main', '-u', self.username, '-p', self.password,
-                    '-s', self.service_url, 'ssh', app['name']]
-            child = pexpect.spawn(sys.executable, args, cwd=libdir)
+        for vm in self.appdef['vms']:
+            libdir = os.path.join(topdir(), 'lib')
+            args = ['-mtestmill.main', '-u', testenv.username,
+                    '-p', testenv.password, '-s', testenv.service_url,
+                    'ssh', self.appname, vm['name']]
+            child = pexpect.spawn(sys.executable, args)
             # Try to get some remote output. The interaction between Unix TTYs,
             # regular expressions, python string escapes, and shell expansions
-            # make the 3 lines below a path to Zen.
+            # make the 5 lines below the path to the Zen of Unix.
             child.expect('\$')  # escape '$' regex special
-            child.send("echo 'Hello from remote!'\n")  # ! = history expansion
-            # eat echo, TTY changed '\n' to '\r\n', and \ + r to match \r
+            child.send("echo 'Hello from remote!'\n")  # escape ! history expansion
+            # eat echo, TTY changed '\n' to '\r\n', and literal \ + r to match \r
             child.expect(r"remote!'\r\n")
             line = child.readline()
-            assert line.endswith('Hello from remote!\r\n')
+            assert line.endswith('Hello from remote!\r\n')  # now without '
             child.send('exit\n')
             child.expect([pexpect.EOF, pexpect.TIMEOUT])
 
     def test_paramiko(self):
         # Subprocess will fire up the child without a PTY, and therefore the
         # child will elect to use Paramiko instead of openssh.
-        assert len(self.applications) >= 4
-        for app in self.applications:
-            libdir = os.path.join(self.topdir, 'lib')
-            command =  [sys.executable, '-mtestmill.main', '-u', self.username,
-                        '-p', self.password, '-s', self.service_url, 'ssh',
-                        app['name']]
-            # Because subprocess does not allocate a TTY, SSHCommand
-            child = subprocess.Popen(command, cwd=libdir,
-                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
+        for vm in self.appdef['vms']:
+            libdir = os.path.join(topdir(), 'lib')
+            command =  [sys.executable, '-mtestmill.main',
+                        '-u', testenv.username, '-p', testenv.password,
+                        '-s', testenv.service_url,
+                        'ssh', self.appname, vm['name']]
+            child = subprocess.Popen(command, stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             script = "echo 'Hello from remote!'\nexit\n"
             stdout, stderr = child.communicate(script)
             # Note: without a TTY, \n stays \n. Output is still echoed. We
-            # can distinguish between the echo'd command and the actualy output
+            # can distinguish between the echo'd command and the actual output
             # because the output does not contain a closing single quote (that
             # was escaped away by the remote bash.
             assert 'Hello from remote!\n' in stdout

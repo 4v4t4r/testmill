@@ -15,28 +15,71 @@
 from __future__ import absolute_import, print_function
 
 import os
-import testmill
-import testmill.test
+import urllib
+
+from testmill.state import env
+from testmill.main import main
+from testmill.test import *
 
 
-class TestExamples(testmill.test.UnitTest):
+class TestExamples(TestSuite):
     """Run the examples in ~/examples.
 
     This tests TestMill, as well as the functionality of our default images.
     """
 
     def test_python(self):
-        command = testmill.MainCommand()
-        project = os.path.join(self.topdir, 'examples', 'python')
+        project = os.path.join(topdir(), 'examples', 'python')
         os.chdir(project)
-        status = command.main(['-u', self.username, '-p', self.password,
-                               '-s', self.service_url, 'run'])
+        with env.new():
+            status = main(['-u', testenv.username, '-p', testenv.password,
+                           '-s', testenv.service_url, 'run', 'platformtest'])
         assert status == 0
 
-    def test_java_maven(self):
-        command = testmill.MainCommand()
-        project = os.path.join(self.topdir, 'examples', 'java_maven')
+    def test_maven(self):
+        project = os.path.join(topdir(), 'examples', 'maven')
         os.chdir(project)
-        status = command.main(['-u', self.username, '-p', self.password,
-                               '-s', self.service_url, 'run'])
+        with env.new():
+            status = main(['-u', testenv.username, '-p', testenv.password,
+                           '-s', testenv.service_url, 'run', 'platformtest'])
         assert status == 0
+
+    def test_clojure(self):
+        project = os.path.join(topdir(), 'examples', 'clojure')
+        os.chdir(project)
+        with env.new():
+            status = main(['-u', testenv.username, '-p', testenv.password,
+                           '-s', testenv.service_url, 'run', 'platformtest'])
+        assert status == 0
+
+    def test_multivm_unittest(self):
+        project = os.path.join(topdir(), 'examples', 'multivm')
+        os.chdir(project)
+        with env.new():
+            status = main(['-u', testenv.username, '-p', testenv.password,
+                           '-s', testenv.service_url, 'run', 'unittest'])
+        assert status == 0
+
+    def test_multivm_production(self):
+        project = os.path.join(topdir(), 'examples', 'multivm')
+        os.chdir(project)
+        with env.new():
+            status = main(['-u', testenv.username, '-p', testenv.password,
+                           '-s', testenv.service_url, 'run', 'production'])
+            for vm in env.application['applicationLayer']['vm']:
+                if vm['name'] == 'web':
+                    break
+            assert vm['name'] == 'web'
+            ipaddr = vm['dynamicMetadata']['externalIp']
+            for svc in vm['suppliedServices']:
+                basesvc = svc['baseService']
+                if basesvc['name'].startswith('http'):
+                    port = basesvc['portRange']
+                    break
+            assert basesvc['name'].startswith('http')
+        assert status == 0
+        url = 'http://{}:{}/FrontPage'.format(ipaddr, port)
+        fin = urllib.urlopen(url)
+        page = fin.read()
+        fin.close()
+        assert 'Pyramid tutorial wiki' in page

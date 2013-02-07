@@ -1,5 +1,0 @@
-language: java_maven
-environments:
-- ubuntu1204
-- fedora16
-- fedora17

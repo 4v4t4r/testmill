@@ -1,8 +1,10 @@
-language: python
-environments:
-- ubuntu1204
-- centos6
-- fedora16
-- fedora17
-execute:
-- nosetests
+project:
+    name: testmilltest
+    language: python
+applications:
+-   name: platformtest
+    vms:
+    - name: ubuntu1204
+    - name: centos6
+    - name: fedora16
+    - name: fedora17

@@ -50,9 +50,8 @@ def stack_vars(stack):
             if name in scope:
                 return depth,scope[name]
     for name in sorted(names):
-        if not name.startswith('__'):
-            depth, value = get_var(name)
-            result.append((name, format_var(name, value), depth))
+        depth, value = get_var(name)
+        result.append((name, format_var(name, value), depth))
     return result
 
 
@@ -64,75 +63,125 @@ class _Scope(object):
         self.kwargs = kwargs
 
     def __enter__(self):
-        self.env._stack.append(self.kwargs)
+        envdata = self.env.__dict__
+        envdata['__stack'].append(self.kwargs)
 
     def __exit__(self, *exc_info):
         # Keep an "exception stack". Immensely useful for debugging.
-        if sys.exc_info()[1] and self.env._exc_ref is not sys.exc_info()[1]:
+        envdata = self.env.__dict__
+        if sys.exc_info()[1] and envdata['__exc_ref'] is not sys.exc_info()[1]:
             # Need to keep a reference to the exception so that we know if
             # in the future we are handling a new exception or are still
             # unwinding scopes for the current one. Pretty bad...
-            self.env._exc_ref = sys.exc_info()[1]
-            self.env._exc_stack = self.env._stack[:]
-        self.env._stack.pop()
+            envdata['__exc_ref'] = sys.exc_info()[1]
+            envdata['__exc_stack'] = envdata['__stack'][:]
+        envdata['__stack'].pop()
+
+    start = __enter__
+    stop = __exit__
+
+
+class _Swapper(object):
+
+    def __init__(self, cur, new):
+        self._cur = cur
+        self._new = new
+
+    def __enter__(self):
+        tmp = self._cur.__dict__
+        self._cur.__dict__ = self._new.__dict__
+        self._new.__dict__ = tmp
+
+    def __exit__(self, *exc_info):
+        tmp = self._cur.__dict__
+        self._cur.__dict__ = self._new.__dict__
+        self._new.__dict__ = tmp
 
 
 class _Environment(object):
-    """Shared state for TestMill. This class essentially provides LISP type
-    dynamic binding using a context manager API to enter a new scope."""
+    """Shared state for TestMill.
+    
+    This class manages for a global shared state with static and stack-wise
+    dynamic binding.
+
+    It is modeled closely after Clojure's dynamic binding of Vars. In summary:
+
+      env.foo = 10      # Create a new dynamic variable 'foo' with value 10
+                        # The value is assigned to the global scope.
+      env._foo = 10     # Create a new static variable. The value is assigned
+                        # to the global scope. It may not be re-bound in a sub
+                        # scope.
+      env.let(foo=20)   # enter a new scope, in which 'foo' = 20.
+      print(env.foo)    # print the value of 'foo' in the current scope, or any
+                        # parent scope, until the variable is found.
+      print(env._foo)   # print the value of '_foo'. Since _foo is static, it
+                        # will always be in the root scope.
+    """
 
     def __init__(self, **kwargs):
-        self.__stack = [kwargs]
-        self.__exc_ref = None
-        self.__exc_stack = []
-
-    @property
-    def _stack(self):
-        return self.__stack
-
-    @property
-    def _exc_ref(self):
-        return self.__exc_ref
-
-    @property
-    def _exc_stack(self):
-        return self.__exc_stack
+        self.__dict__['__stack'] = [kwargs]
+        self.__dict__['__exc_ref'] = None
+        self.__dict__['__exc_stack'] = []
 
     def __getattr__(self, name):
-        for scope in reversed(self._stack):
+        stack = self.__dict__['__stack']
+        for scope in reversed(stack):
             if name in scope:
                 return scope[name]
         raise AttributeError(name)
 
     def __setattr__(self, name, value):
-        private_prefix = '{}__'.format(self.__class__.__name__)
-        if name.startswith(private_prefix):
-            self.__dict__[name] = value
-        else:
-            self._stack[-1][name] = value
+        """Set a global variable in this environment."""
+        stack = self.__dict__['__stack']
+        stack[0][name] = value
 
     def let(self, **kwargs):
+        """Enter a new scope, and set all variables in ``kwargs`` as local
+        variables in the new scope."""
+        for key in kwargs:
+            if key.startswith('_'):
+                msg = "Cannot create dynamic binding for static var '{}'."
+                raise RuntimeError(msg.format(key))
         return _Scope(self, kwargs)
 
-    def update(self, obj):
-        for key in obj.__dict__:
-            setattr(self, key, getattr(obj, key))
+    def update(self, env):
+        """Update this environment with variables from another environment."""
+        stack = env.__dict__['__stack']
+        for scope in stack:
+            for name,value in scope.items():
+                setattr(self, name, value)
+
+    def new(self, **kwargs):
+        """Return a context manager that temporarily swaps the environment
+        with a clean new environment. Useful for testing."""
+        new = type(self)(**kwargs)
+        return _Swapper(self, new)
+
+    def copy(self, **kwargs):
+        """Create a copy of an environment. Useful for testing."""
+        new = type(self)()
+        new.update(self)
+        for key in kwargs:
+            setattr(new, key, kwargs[key])
+        return _Swapper(self, new)
 
     def __repr__(self):
         clsname = self.__class__.__name__
-        header = '<{}(), <depth={}>'.format(clsname, len(self._stack))
-        show_exc_stack = sys.exc_info() and self._exc_stack
+        stack = self.__dict__['__stack']
+        header = '<{}(), <depth={}>'.format(clsname, len(stack))
+        exc_stack = self.__dict__['__exc_stack']
+        show_exc_stack = sys.exc_info() and exc_stack
         if show_exc_stack:
-            header += ', <exc_depth={}>'.format(len(self._exc_stack))
+            header += ', <exc_depth={}>'.format(len(exc_stack))
         header += '>'
         lines = [header]
         lines.append('  Current Environment:')
-        for name,value,depth in stack_vars(self._stack):
+        for name,value,depth in stack_vars(stack):
             if not name.startswith('_') or self.verbose:
                 lines.append('    {}[{}]: {}'.format(name, depth, value))
         if show_exc_stack:
             lines.append('  Exception Environment:')
-            for name,value,depth in stack_vars(self._exc_stack):
+            for name,value,depth in stack_vars(exc_stack):
                 if not name.startswith('_') or self.verbose:
                     lines.append('    {}[{}]: {}'.format(name, depth, value))
         lines.append('')

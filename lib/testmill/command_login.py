@@ -53,3 +53,4 @@ def do_login(args, env):
         login.password_login()
         login.store_token()
     console.info('Successfully logged in.')
+    return 0

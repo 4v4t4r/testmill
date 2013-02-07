@@ -14,149 +14,170 @@
 
 import os
 import sys
-import os.path
-import subprocess
+import tempfile
+import shutil
+import argparse
 
-import testmill
 from nose import SkipTest
+from testmill import *
+from testmill.state import env, _Environment
+testenv = _Environment()
 
+from testmill.test import networkblocker, sudo
+from testmill.test.mock_api import MockRavelloClient
 
-# Python 2.x / 3.x compatiblity
-try:
+if sys.version_info[0] == 3:
     import configparser
-except ImportError:
+else:
     import ConfigParser as configparser
 
 
-class UnitTest(object):
+__all__ = ('testenv', 'topdir', 'unittest', 'systemtest',
+           'require_sudo', 'require_network_blocking', 'TestSuite')
+
+
+_topdir = None
+_testdir = None
+
+def topdir():
+    global _topdir
+    if _topdir is None:
+        _topdir = testdir()
+        for i in range(3):
+            _topdir, _ = os.path.split(_topdir)
+    return _topdir
+
+def testdir():
+    global _testdir
+    if _testdir is None:
+        _testdir, _ = os.path.split(os.path.abspath(__file__))
+    return _testdir
+
+
+# Create an environment based on ~/test.cfg.
+
+def create_environment():
+    fname = os.path.join(topdir(), 'test.cfg')
+    if not os.access(fname, os.R_OK):
+        m = 'Tests need to be run from a checked out source repository.'
+        raise RuntimeError(m)
+    config = configparser.ConfigParser()
+    config.read([fname])
+    def config_var(name, default=None):
+        try:
+            return config.get('test', name)
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            return default
+    testenv.username = config_var('username')
+    testenv.password = config_var('password')
+    testenv.service_url = config_var('service_url') or RavelloClient.default_url
+    testenv.network_blocking = config_var('network_blocking')
+    testenv.sudo_password = config_var('sudo_password')
+    testenv.quiet = False
+    testenv.debug = True
+    testenv.verbose = True
+    testenv.always_confirm = True
+    testenv.args = argparse.Namespace()
+    testenv.api = None
+
+
+# suite decorators
+
+def unittest(obj):
+    obj.unittest = 1
+    return obj
+
+def systemtest(obj):
+    obj.systemtest = 1
+    return obj
+
+
+# method decorators
+
+def require_sudo(func):
+    def wrapped(*args, **kwds):
+        if not sudo.have_sudo():
+            raise SkipTest('sudo is not available')
+        if testenv.sudo_password:
+            if not sudo.check_sudo_password(testenv.sudo_password):
+                raise SkipTest('incorrect sudo_password in test.cfg')
+        elif not sudo.check_passwordless_sudo():
+            raise SkipTest('sudo_password not set in test.cfg')
+        return func(*args, **kwds)
+    wrapped.__name__ = func.__name__
+    return wrapped
+
+def require_network_blocking(func):
+    def wrapped(*args, **kwds):
+        if not networkblocker.have_blocker():
+            raise SkipTest('network blocking is not available')
+        if not testenv.network_blocking:
+            raise SkipTest('network blocking disabled in test.cfg')
+        return require_sudo(func)(*args, **kwds)
+    wrapped.__name__ = func.__name__
+    return wrapped
+
+
+# Base class for suites
+
+class TestSuite(object):
 
     @classmethod
     def setup_class(cls):
-        path = os.path.abspath(__file__)
-        for i in range(4):
-            path, rest = os.path.split(path)
-        fname = os.path.join(path, 'setup.py')
-        if not os.access(fname, os.R_OK):
-            m = 'Tests need to be run from a source repository.'
-            raise RuntimeError(m)
-        cls.topdir = path
-        fname = os.path.join(path, 'setup.cfg')
-        config = cls.config = configparser.ConfigParser()
-        config.read([fname])
-        try:
-            cls.username = config.get('test', 'username')
-            cls.password = config.get('test', 'password')
-        except (configparser.NoSectionError, configparser.NoOptionError):
-            m = "Specify both 'username' and 'password' under [test] in setup.cfg."
-            raise RuntimeError(m)
-        try:
-            cls.service_url = config.get('test', 'service_url')
-        except configparser.NoOptionError:
-            cls.service_url = testmill.ravello.RavelloClient.default_url
-        try:
-            cls.sudo_password = config.get('test', 'sudo_password')
-        except configparser.NoOptionError:
-            cls.sudo_password = None
-
-    def require_sudo(self):
-        """This test requires sudo."""
-        if sys.platform.startswith('win'):
-            raise SkipTest('sudo is not available no Windows')
-        if self.sudo_password:
-            # If a sudo password is configured, make sure it is correct.
-            sudo = subprocess.Popen(['sudo', '-S', '-k', 'true'],
-                                    stdin=subprocess.PIPE)
-            sudo.communicate(self.sudo_password + '\n')
-            if sudo.returncode != 0:
-                m = 'incorrect sudo_password under [test] in setup.cfg'
+        create_environment()
+        cls._tmpdirs = [tempfile.mkdtemp()]
+        cls._saved_stderr = sys.stderr 
+        sys.stderr = sys.stdout  # Have nose capture stderr too
+        if getattr(cls, 'systemtest', False):
+            if not testenv.username or not testenv.password:
+                m = 'Please specify username and password in test.cfg'
                 raise SkipTest(m)
+            api = RavelloClient()
+            try:
+                api.connect(testenv.service_url)
+                api.login(testenv.username, testenv.password)
+            except RavelloError:
+                raise SkipTest('could not connect to the API')
         else:
-            # Otherwise, see if we are able to run sudo with a password.
-            sudo = subprocess.Popen(['sudo', '-n', 'true'],
-                                    stderr=subprocess.PIPE)
-            sudo.communicate()
-            if sudo.returncode != 0:
-                m = 'no sudo_password in setup.cfg and sudo needs a password'
-                raise SkipTest(m)
+            api = MockRavelloClient()
+        testenv.api = api
 
-    def sudo(self, command):
-        """Execute a command under sudo. Raise an exception on error."""
-        if self.sudo_password:
-            command = ['sudo', '-S', '-k'] + command
-            sudo = subprocess.Popen(command, stdin=subprocess.PIPE)
-            sudo.communicate(self.sudo_password + '\n')
-            returncode = sudo.returncode
-        else:
-            command = ['sudo'] + command
-            returncode = subprocess.call(command)
-        if returncode != 0:
-            raise subprocess.CalledProcessError(returncode, ' '.join(command))
+    @classmethod
+    def teardown_class(cls):
+        testenv.api.close()
+        def paranoia_check(dname):
+            if '/..' in dname or '\\..' in dname:
+                return False
+            return '/tmp/' in dname or '\\temp\\' in dname
+        for dname in cls._tmpdirs:
+            # Refuse to remove directories that are not in a common temp
+            # directory. This check is just for peace of mind, it should
+            # never fail. In platforms with uncommon temp directories this
+            # check may result in a temp directory not being cleaned up.
+            if paranoia_check(dname):
+                shutil.rmtree(dname)
+        del cls._tmpdirs[:]
+        sys.stderr = cls._saved_stderr
 
-    if sys.platform == 'darwin':
+    def tempfile(self, contents=None):
+        fd, fname = tempfile.mkstemp(dir=self._tmpdirs[0])
+        if contents:
+            os.write(fd, contents)
+        os.close(fd)
+        return fname
 
-        class blocker(object):
-            """Context manager that block IP traffic to a certain IP."""
-
-            def __init__(self, suite, ipaddr):
-                self.suite = suite
-                self.ipaddr = ipaddr
-
-            def __enter__(self):
-                # DROP return traffic.
-                command = 'ipfw -q add 2000 drop tcp from {} to any' \
-                            .format(self.ipaddr)
-                self.suite.sudo(command.split())
-
-            def __exit__(self, *exc):
-                command = 'ipfw -q del 2000'
-                self.suite.sudo(command.split())
-
-    elif sys.platform == 'linux2':
-
-        class blocker(object):
-            """Block traffic on Linux."""
-
-            def __init__(self, suite, ipaddr):
-                self.suite = suite
-                self.ipaddr = ipaddr
-
-            def __enter__(self):
-                # DROP the return traffic. For some reason, DROPing the
-                # outgoing traffic does not (seem to) impact established
-                # connections.
-                command = 'iptables -I INPUT 1 -s {} -j DROP' \
-                            .format(self.ipaddr)
-                self.suite.sudo(command.split())
-
-            def __exit__(self, *exc):
-                command = 'iptables -D INPUT 1'
-                self.suite.sudo(command.split())
-
-    else:
-        blocker = None
-
-    def require_ip_blocking(self):
-        """This test requires IP blocking."""
-        if self.blocker is None:
-            raise SkipTest('IP blocking is required for this test')
-        self.require_sudo()
-
-    def block_ip(self, ipaddr):
-        """Return a context manager that blocks 'ipaddr'."""
-        assert self.blocker is not None
-        return self.blocker(self, ipaddr)
-
-
-# redirect stderr to stdout to that nose will capture it
-sys.stderr = sys.stdout
-
-
-def assert_raises(exc_type, func, *args, **kwds):
-    try:
-        func(*args, **kwds)
-    except Exception as exc:
-        pass
-    else:
-        exc = None
-    assert isinstance(exc, exc_type)
-    return exc
+    def tempdir(self, contents=None):
+        dname = tempfile.mkdtemp()
+        self._tmpdirs.append(dname)
+        def write_directory(cwd, contents):
+            for name,value in contents.items():
+                fullname = os.path.join(cwd, name)
+                if isinstance(value, str):
+                    with file(fullname, 'w') as fout:
+                        fout.write(value)
+                elif isinstance(value, dict):
+                    os.mkdir(fullname)
+                    write_directory(fullname, value)
+        if contents:
+            write_directory(dname, contents)
+        return dname

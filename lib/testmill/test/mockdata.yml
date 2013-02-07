@@ -1,0 +1,17 @@
+images:
+-   id: 1
+    name: image1
+-   id: 2
+    name: image2
+
+blueprints:
+-   id: 1
+    name: blueprint1
+    applicationLayer:
+        vm:
+        -   name: bpvm1
+-   id: 2
+    name: blueprint2
+    applicationLayer:
+        vm:
+        -   name: bpvm2

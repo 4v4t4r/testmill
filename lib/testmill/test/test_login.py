@@ -15,53 +15,36 @@
 from __future__ import absolute_import, print_function
 
 import mock
-import argparse
 
-import testmill
-import testmill.test
+from testmill.main import main
+from testmill.state import env
+from testmill.test import *
 
 
-class TestLogin(testmill.test.UnitTest):
+@systemtest
+class TestLogin(TestSuite):
 
-    def test_login_run(self):
-        command = testmill.LoginCommand(None)
-        args = argparse.Namespace(user=self.username, password=self.password,
-                                  service_url=self.service_url, username=None)
-        try:
-            status = command.run(args)
-        except SystemExit as e:
-            status = e[0]
-        assert status is None
-
-    def test_login_main(self):
-        command = testmill.LoginCommand(None)
-        args = argparse.Namespace(user=self.username, password=self.password,
-                                  service_url=self.service_url, username=None)
-        status = command.main([], args)
+    def test_login(self):
+        with env.new():
+            status = main(['-u', testenv.username, '-p', testenv.password,
+                           '-s', testenv.service_url, 'login'])
         assert status == 0
 
-    def test_main_login_prompt(self):
-        command = testmill.MainCommand()
-        with mock.patch.multiple('testmill.command.CommandBase',
-                        prompt=lambda *args: self.username,
-                        getpass=lambda *args: self.password):
-            status = command.main(['-s', self.service_url, 'login'])
+    def test_login_prompt(self):
+        with env.copy(), mock.patch.multiple('testmill.console',
+                                prompt=lambda *args: testenv.username,
+                                getpass=lambda *args: testenv.password):
+            status = main(['-s', testenv.service_url, 'login'])
         assert status == 0
 
-    def test_main_login_with_options(self):
-        command = testmill.MainCommand()
-        status = command.main(['-u', self.username, '-p', self.password,
-                               '-s', self.service_url, 'login'])
+    def test_login_with_positional_username(self):
+        with env.copy():
+            status = main(['-p', testenv.password, '-s', testenv.service_url,
+                           'login', testenv.username])
         assert status == 0
 
-    def test_main_login_with_positional_argument(self):
-        command = testmill.MainCommand()
-        status = command.main(['-p', self.password, '-s', self.service_url,
-                               'login', self.username])
-        assert status == 0
-
-    def test_main_failed_login(self):
-        command = testmill.MainCommand()
-        status = command.main(['-u', self.username, '-p', 'invalid',
-                               '-s', self.service_url, 'login'])
+    def test_login_failed(self):
+        with env.copy():
+            status = main(['-u', testenv.username, '-p', 'invalid',
+                           '-s', testenv.service_url, 'login'])
         assert status != 0

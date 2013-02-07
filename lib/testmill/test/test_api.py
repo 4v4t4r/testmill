@@ -18,65 +18,66 @@ import time
 import socket
 import urlparse
 import threading
+import pickle
 
-import testmill
-import testmill.test
-from testmill.test import assert_raises
-from testmill.ravello import RavelloClient, RavelloError
+from nose.tools import assert_raises
+from testmill import RavelloClient, RavelloError
+from testmill.state import env
+from testmill.test import *
+from testmill.test import networkblocker
 
-from nose import SkipTest
 
-
-class TestBaseAPI(testmill.test.UnitTest):
+@systemtest
+class TestAPI(TestSuite):
     """Test the API client."""
 
     def test_connect(self):
         api = RavelloClient()
-        api.connect(self.service_url)
+        api.connect(testenv.service_url)
         api.close()
 
     def test_login(self):
         api = RavelloClient()
-        api.connect(self.service_url)
-        api.login(self.username, self.password)
+        api.connect(testenv.service_url)
+        api.login(testenv.username, testenv.password)
         api.close()
 
     def test_login_with_invalid_password(self):
         api = RavelloClient()
-        api.connect(self.service_url)
-        assert_raises(RavelloError, api.login, 'nouser', self.password)
-        assert_raises(RavelloError, api.login, self.username, 'invalid')
+        api.connect(testenv.service_url)
+        assert_raises(RavelloError, api.login, 'nouser', testenv.password)
+        assert_raises(RavelloError, api.login, testenv.username, 'invalid')
 
+    @require_network_blocking
     def test_connect_fail(self):
-        self.require_ip_blocking()
         api = RavelloClient(retries=3, timeout=5)
-        parsed = urlparse.urlsplit(self.service_url)
+        parsed = urlparse.urlsplit(testenv.service_url)
         ipaddr = socket.gethostbyname(parsed.netloc)
-        with self.block_ip(ipaddr):
-            assert_raises(RavelloError, api.connect, self.service_url)
+        with networkblocker.block_ip(ipaddr):
+            assert_raises(RavelloError, api.connect, testenv.service_url)
         # RavelloClient.connect does not retry
         assert api._total_retries == 0
 
+    @require_network_blocking
     def test_retry_fail(self):
-        self.require_ip_blocking()
         api = RavelloClient(retries=3, timeout=5)
-        api.connect(self.service_url)
-        api.login(self.username, self.password)
-        parsed = urlparse.urlsplit(self.service_url)
+        api.connect(testenv.service_url)
+        api.login(testenv.username, testenv.password)
+        parsed = urlparse.urlsplit(testenv.service_url)
         ipaddr = socket.gethostbyname(parsed.netloc)
-        with self.block_ip(ipaddr):
+        with networkblocker.block_ip(ipaddr):
             assert_raises(RavelloError, api.hello)
         assert api._total_retries >= 3
 
+    @require_network_blocking
     def test_retry_succeed(self):
-        self.require_ip_blocking()
         api = RavelloClient(retries=4, timeout=5)
-        api.connect(self.service_url)
-        api.login(self.username, self.password)
-        parsed = urlparse.urlsplit(self.service_url)
+        api.connect(testenv.service_url)
+        api.login(testenv.username, testenv.password)
+        parsed = urlparse.urlsplit(testenv.service_url)
         ipaddr = socket.gethostbyname(parsed.netloc)
         def timed_block(secs):
-            with self.block_ip(ipaddr):
+            with networkblocker.block_ip(ipaddr):
                 time.sleep(secs)
         thread = threading.Thread(target=timed_block, args=(12.5,))
         thread.start()
@@ -86,20 +87,43 @@ class TestBaseAPI(testmill.test.UnitTest):
         thread.join()
         assert api._total_retries >= 2
 
-
-class TestAPI(testmill.test.UnitTest):
-    """Ravello API tests."""
-
-    @classmethod
-    def setup_class(cls):
-        super(TestAPI, cls).setup_class()
+    def test_pickle_not_connected(self):
         api = RavelloClient()
-        try:
-            api.connect(cls.service_url)
-            api.login(cls.username, cls.password)
-        except RavelloError:
-            raise SkipTest('could not connect to the API')
-        cls.api = api
+        pickled = pickle.dumps(api)
+        api2 = pickle.loads(pickled)
+        api2.connect(testenv.service_url)
+        api2.login(testenv.username, testenv.password)
+        api2.hello()
+        api2.close()
+
+    def test_pickle_connected(self):
+        api = RavelloClient()
+        api.connect(testenv.service_url)
+        pickled = pickle.dumps(api)
+        api2 = pickle.loads(pickled)
+        api2.login(testenv.username, testenv.password)
+        api2.hello()
+        api2.close()
+
+    def test_pickle_logged_in(self):
+        api = RavelloClient()
+        api.connect(testenv.service_url)
+        api.login(testenv.username, testenv.password)
+        pickled = pickle.dumps(api)
+        api2 = pickle.loads(pickled)
+        api2.hello()
+        api2.close()
 
     def test_hello(self):
-        self.api.hello()
+        testenv.api.hello()
+
+    def test_get_images(self):
+        images = testenv.api.get_images()
+        assert len(images) > 0
+        assert isinstance(images, list)
+        for image in images:
+            assert isinstance(image, dict)
+            assert 'id' in image
+            assert isinstance(image['id'], int)
+            assert 'name' in image
+            assert isinstance(image['name'], (str, unicode))

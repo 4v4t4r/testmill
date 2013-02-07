@@ -304,6 +304,7 @@ class Task(fabric.tasks.Task):
         self.name = name
         self.user = kwargs.pop('user', None)
         self.commands = kwargs.pop('commands', [])
+        self.quiet = kwargs.pop('quiet', False)
         for key in kwargs:
             setattr(self, key, kwargs[key])
         self.stdout = ''
@@ -325,13 +326,12 @@ class Task(fabric.tasks.Task):
         runargs = {'shell': False, 'pty': True, 'warn_only': True }
         if not env.args.interactive:
             runargs['quiet'] = True
-        runargs.setdefault('warn_only', env.args.continue_)
         if user is None:
             user = self.user
         if user:
-            invoke = 'sudo -u {user} $SHELL {script_name}'
+            invoke = 'sudo -u {user} $SHELL -l {script_name}'
         else:
-            invoke = 'exec $SHELL {script_name}'
+            invoke = 'exec $SHELL -l {script_name}'
         invoke_args = {'user': user, 'script_name': script_name}
         command = invoke.format(**invoke_args)
         ret = fab.run(command, **runargs)
@@ -417,7 +417,8 @@ class DeployTask(Task):
         super(DeployTask, self).run(commands=commands)
 
     def run(self):
-        if env.args.remote:
-            self.remote_checkout(env.args.checkout)
+        version = getattr(self, 'remote', None)
+        if version:
+            self.remote_checkout(version)
         else:
             self.copy_from_local()

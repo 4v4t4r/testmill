@@ -5,3 +5,5 @@ images/*.xml
 *.egg-info
 trash/
 venv*/
+.coverage
+scratch/

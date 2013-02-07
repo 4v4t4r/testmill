@@ -115,7 +115,7 @@ def add_defaults(manifest):
         if language:
             console.info("Detected a {} project.", language)
     manifest['project']['language'] = language
-    if language not in manifest.get('languages', {}):
+    if language and language not in manifest.get('languages', {}):
         console.warning("Unknown language '{}' in manifest.", language)
     repo = manifest.setdefault('repository', {})
     typ = repo.get('type')
@@ -125,7 +125,7 @@ def add_defaults(manifest):
             console.info('Detected a {} repository.', typ)
     repo['type'] = typ
     url = repo.get('url')
-    if url is None:
+    if url is None and typ:
         url = versioncontrol.get_origin(directory, typ)
         if url:
             console.info("Using remote origin '{}'.", url)

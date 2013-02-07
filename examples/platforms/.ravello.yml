@@ -1,11 +1,10 @@
 project:
     name: testmilltest
-    language: clojure
+    language: nodefaults
 applications:
 -   name: platformtest
     vms:
     - name: ubuntu1204
     - name: centos6
-      execute: true
-    - name: fedora16
     - name: fedora17
+    - name: fedora16

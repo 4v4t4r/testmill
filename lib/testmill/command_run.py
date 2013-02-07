@@ -23,8 +23,8 @@ from testmill.state import env
 
 
 usage = textwrap.dedent("""\
-        usage: ravtest [OPTION]... run [-i] [-c] [--new]
-                       [-V <vmlist>] <application>
+        usage: ravtest [OPTION]... run [-i] [-c] [--new] [-V <vmlist>]
+                       <application> [<command>]
                ravtest run --help
         """)
 
@@ -64,6 +64,7 @@ def add_args(parser):
     parser.add_argument('--new', action='store_true')
     parser.add_argument('-V', '--vms')
     parser.add_argument('application')
+    parser.add_argument('command', nargs='?')
 
 
 def do_run(args, env):
@@ -92,13 +93,17 @@ def do_run(args, env):
     if not vms:
         error.raise_error('No virtual machines in application.')
 
+    if args.command:
+        for vm in appdef['vms']:
+            vm['tasks'] = [{'name': 'execute', 'commands': [args.command]}]
+
     what = util.plural_noun('virtual machine', len(vms))
     console.info('Running tasks on {} {}.', len(vms), what)
 
     app = application.create_or_reuse_application(appdef, args.new)
     app = application.wait_for_application(app, vms)
 
-    tasks.run_all_tasks(app, vms)
+    ret = tasks.run_all_tasks(app, vms)
 
     console.info('\n== The following services will be available for {} minutes:\n',
                  appdef['keepalive'])
@@ -115,3 +120,5 @@ def do_run(args, env):
             addr = util.format_service(vm, svc)
             console.info('    * {}: {}', svc['name'], addr)
         console.info('')
+
+    return error.EX_OK if ret == 0 else error.EX_SOFTWARE

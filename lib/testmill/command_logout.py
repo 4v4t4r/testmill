@@ -38,3 +38,4 @@ def do_logout(args, env):
     """The "ravello logout" command."""
     login.remove_token()
     console.info('Logged out.')
+    return 0

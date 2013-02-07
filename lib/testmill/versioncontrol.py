@@ -274,7 +274,7 @@ def get_origin(repodir='.', repotype='auto'):
         if typ is None:
             error.raise_error('Unknown repository type at {}.', repodir)
     if repotype not in registry:
-        error.raise_error("Unknown repository type '{}'.", repodir)
+        error.raise_error("Unknown repository type '{}'.", repotype)
     get_origin = registry[repotype][2]
     return get_origin(repodir)
 

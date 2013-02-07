@@ -1,6 +1,0 @@
-language: none
-environments:
-- ubuntu1204
-- centos6
-- fedora17
-- fedora16

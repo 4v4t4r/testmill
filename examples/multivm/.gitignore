@@ -1,0 +1,7 @@
+venv*
+*.egg-info
+*.pyc
+pyramid.log
+pyramid.pid
+.ravello
+.coverage

@@ -15,25 +15,30 @@
 from __future__ import absolute_import, print_function
 
 import os
-import testmill
-import testmill.test
+
+from testmill.main import main
+from testmill.state import env
+from testmill.test import *
 
 
-class TestRun(testmill.test.UnitTest):
+@systemtest
+class TestRun(TestSuite):
     """Test the "ravtest run" command."""
 
     def test_run(self):
-        command = testmill.MainCommand()
-        project = os.path.join(self.topdir, 'examples', 'nolang')
+        project = os.path.join(topdir(), 'examples', 'platforms')
         os.chdir(project)
-        status = command.main(['-u', self.username, '-p', self.password,
-                               '-s', self.service_url, 'run', 'true'])
+        with env.new():
+            status = main(['-u', testenv.username, '-p', testenv.password,
+                           '-s', testenv.service_url,
+                           'run', 'platformtest', 'true'])
         assert status == 0
 
     def test_run_failed(self):
-        command = testmill.MainCommand()
-        project = os.path.join(self.topdir, 'examples', 'nolang')
+        project = os.path.join(topdir(), 'examples', 'platforms')
         os.chdir(project)
-        status = command.main(['-u', self.username, '-p', self.password,
-                               '-s', self.service_url, 'run', 'false'])
+        with env.new():
+            status = main(['-u', testenv.username, '-p', testenv.password,
+                           '-s', testenv.service_url,
+                           'run', 'platformtest', 'false'])
         assert status != 0

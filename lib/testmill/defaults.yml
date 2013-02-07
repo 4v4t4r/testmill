@@ -25,7 +25,6 @@ languages:
         detect: [ 'setup.py' ]
         applications:
             prepare:
-            -   "if test -f requirements.txt; then sudo pip install -r requirements.txt; fi"
             -   "python setup.py build"
             execute:
             -   "python setup.py test"

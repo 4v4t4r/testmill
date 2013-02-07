@@ -75,9 +75,9 @@ def add_args(parser):
 
 def do_ssh(args, env):
     """The "ravello ssh" command."""
-    login.default_login()
-    keypair.default_keypair()
     with env.let(quiet=True):
+        login.default_login()
+        keypair.default_keypair()
         manif = manifest.default_manifest()
 
     appname = '{}:{}'.format(manif['project']['name'], args.application)
