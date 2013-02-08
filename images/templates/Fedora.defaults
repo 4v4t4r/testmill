@@ -1,0 +1,7 @@
+define(ARCH, ifelse(BITS, 64, x86_64, i386))dnl
+define(HOSTNAME, `fedora'VERSION)dnl
+define(ROOTPW, ravelloCloud)dnl
+define(FSTYPE, ext4)dnl
+ifelse(VERSION, 16,
+    define(PY3_VERSION, 3.2)define(HAVE_PIP3, 0),
+    define(PY3_VERSION, 3.3)define(HAVE_PIP3, 1))dnl

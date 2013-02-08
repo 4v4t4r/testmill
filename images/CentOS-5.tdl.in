@@ -1,0 +1,5 @@
+define(MAJOR, 5)dnl
+define(MINOR, 8)dnl
+define(BITS, 64)dnl
+include(CentOS.defaults)dnl
+include(CentOS.tdl)dnl

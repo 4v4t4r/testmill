@@ -1,0 +1,5 @@
+define(MAJOR, 12.04)dnl
+define(MINOR, 1)dnl
+define(BITS, 64)dnl
+include(Ubuntu.defaults)dnl
+include(Ubuntu.tdl)dnl

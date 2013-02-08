@@ -1,0 +1,4 @@
+define(VERSION, 17)dnl
+define(BITS, 64)dnl
+include(Fedora.defaults)dnl
+include(Fedora.tdl)dnl

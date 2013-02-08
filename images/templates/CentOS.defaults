@@ -1,0 +1,7 @@
+define(VERSION, MAJOR`.'MINOR)dnl
+define(`MINOR', ifelse(MAJOR, 5, `U'MINOR, MINOR))dnl
+define(DVDNR, ifelse(MAJOR, 6, `DVD1', `DVD-1of2'))dnl
+define(ARCH, ifelse(BITS, 64, x86_64, i386))dnl
+define(HOSTNAME, `centos'MAJOR)dnl
+define(ROOTPW, ravelloCloud)dnl
+define(FSTYPE, ifelse(MAJOR, 6, ext4, ext3))dnl

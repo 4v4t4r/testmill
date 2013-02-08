@@ -3,8 +3,8 @@ d-i console-setup/ask_detect boolean false
 d-i console-setup/layoutcode string us
 
 d-i netcfg/choose_interface select auto
-d-i netcfg/get_hostname string Ubuntu
-d-i netcfg/dhcp_hostname string Ubuntu
+d-i netcfg/get_hostname string HOSTNAME
+d-i netcfg/dhcp_hostname string HOSTNAME
 d-i netcfg/get_domain string localdomain
 d-i netcfg/wireless_wep string
 
@@ -20,12 +20,16 @@ d-i partman/confirm_nooverwrite boolean true
 
 d-i passwd/root-login boolean true
 d-i passwd/make-user boolean false
-d-i passwd/root-password password %ROOTPW%
-d-i passwd/root-password-again password %ROOTPW%
+d-i passwd/root-password password %`ROOTPW'%
+d-i passwd/root-password-again password %`ROOTPW'%
 
 tasksel tasksel/first multiselect standard
 d-i     pkgsel/include/install-recommends       boolean true
-d-i     pkgsel/include  string openssh-server python-software-properties
+d-i     pkgsel/include  string openssh-server python-software-properties \
+    gcc make autoconf automake libtool gdb pkg-config git mercurial \
+    bzr subversion python-dev python-setuptools python-pip python-nose \
+    python3-dev python3-setuptools python3-nose ruby-dev rake rubygems \
+    ruby-bundler ruby-rspec openjdk-7-jdk maven2 ivy leiningen
 
 d-i grub-installer/only_debian boolean true
 d-i grub-installer/with_other_os boolean true
@@ -50,10 +54,16 @@ d-i preseed/late_command string \
         -e "$ a %sudo ALL=(ALL) NOPASSWD: ALL" \
         /etc/sudoers; \
     in-target sh -c 'rm -f /var/lib/dhcp/*'; \
-    in-target sed -i -e "s/^user:.*$/#&/" \
-        -e "s/^datasource_list.*$/#&/" \
-        -e "$ a user: ravello\ndatasource_list: [ NoCloud ]" \
+    in-target sed -i -e "s/ec2-user/ravello/" \
+        -e "$ a user: ravello" \
+        -e "$ a users: default" \
+        -e "$ a datasource_list: [ NoCloud ]" \
         /etc/cloud/cloud.cfg; \
-    in-target sh -c 'rm -f /etc/cloud/cloud.cfg.d/*_dpkg.cfg';
+    in-target sh -c 'rm -f /etc/cloud/cloud.cfg.d/*_dpkg.cfg'; \
+ifelse(HAVE_PIP3, 1,
+`    in-target ln -s pip-PY3_VERSION /usr/bin/pip3',
+`    in-target easy_install3 pip==1.2.1; \
+    in-target ln -s pip-PY3_VERSION /usr/local/bin/pip3; \
+    in-target rm -f /usr/local/bin/pip')
 
 d-i finish-install/reboot_in_progress note

@@ -3,35 +3,57 @@ text
 keyboard us
 lang en_US.UTF-8
 skipx
-network --device eth0 --bootproto dhcp --hostname centos --noipv6
-rootpw %ROOTPW%
+network --device eth0 --bootproto dhcp --hostname HOSTNAME --noipv6
+rootpw %`ROOTPW'%
 firewall --disabled
 authconfig --enableshadow --enablemd5
 selinux --enforcing
-timezone --utc America/New_York
+timezone --utc Etc/UTC
 reboot
-part / --fstype ext3 --onpart /dev/vda1
+part / --fstype FSTYPE --onpart /dev/vda1
 part swap --fstype swap --onpart /dev/vda2
 bootloader --location=mbr --append="rhgb quiet"
 
 %packages
 @core
-@base
+@Development Tools
+tar
+gzip
+bzip2
+xz
+mlocate
+cloud-init
+bzr
+python-devel
+python-setuptools
+python-pip
+python-nose
+ruby-devel
+rubygems
+rubygem-rake
+rubygem-bundler
+rubygem-rspec
+java-1.7.0-openjdk-devel
+maven
+apache-ivy
+mysql-server
+postgresql-server
+%end
 
 %pre
 exec >/dev/tty6 2>&1
 parted -s /dev/vda -- mklabel msdos
-parted -s /dev/vda -- mkpart primary ext3 2048s -4194305s
+parted -s /dev/vda -- mkpart primary FSTYPE 2048s -4194305s
 parted -s /dev/vda -- mkpart primary linux-swap -4194304s -1s
 parted -s /dev/vda -- set 1 boot on
 partprobe /dev/vda
+%end
 
 %post
+# Logging information is shown on TTY6 (ALT-F6)
 exec >/dev/tty6 2>&1
 
 /sbin/service network start
-
-yum -y update
 
 cat <<EOM >/etc/yum.repos.d/epel-bootstrap.repo
 [epel]
@@ -47,6 +69,8 @@ rm -f /etc/yum.repos.d/epel-bootstrap.repo
 
 yum -y install cloud-init
 
+# Lock user root. Create user ravello (pw: 'ravelloCloud')
+# that has full sudo access. And disable ssh password auth.
 passwd -l root
 useradd -m ravello -p PWjhvSeSjMdYI
 gpasswd -a ravello wheel
@@ -56,17 +80,31 @@ sed -i -e "s/^PasswordAuthentication .*$/#&/" \
 sed -i -e "s/^%wheel.*$/#&/" \
         -e "$ a %wheel ALL=(ALL) NOPASSWD: ALL" \
         /etc/sudoers
+
+# Make sure network interfaces do not get renamed. Otherwise we
+# will not have connectivity.
 sed -i -e "/^HWADDR=/d" \
         -e "/^UUID=/d" \
         /etc/sysconfig/network-scripts/ifcfg-eth0
-rm -f /etc/udev/rules.d/70-persistent-net.rules
+rm -f /lib/udev/rules.d/70-persistent-net.rules
+rm -f /lib/udev/rules.d/71-biosdevname.rules
 rm -f /var/lib/dhclient/*
-sed -i -e "s/^user:.*$/#&/" \
-        -e "s/^datasource_list.*$/#&/" \
-        -e "$ a user: ravello\ndatasource_list: [ NoCloud ]" \
+
+# This tricky cloud-init configuration patch works on both cloud-init
+# version 0.6 as well as 0.7.
+sed -i -e "s/ec2-user/ravello/" \
+        -e "$ a user: ravello" \
+        -e "$ a users: default" \
+        -e "$ a datasource_list: [ NoCloud ]" \
         /etc/cloud/cloud.cfg
 
+# Make sure we have a basic Python environment that is identical over
+# the different images.
+ln -s pip-python /usr/bin/pip
+
+# Disable services. Otherwise startup is too slow.
 for i in abrt-ccpp abrt-oops abrtd auditd cpuspeed haldaemon ip6tables \
         irqbalance kdump lvm2-monitor netfs sysstat; do
-    chkconfig $i off;
+    chkconfig $i off || :
 done
+%end

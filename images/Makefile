@@ -1,8 +1,14 @@
-TEMPLATES = $(wildcard *.tdl)
-IMAGES = $(patsubst %.tdl, %.xml, $(TEMPLATES))
-OZ_INSTALL = oz-install -u -t 14400 -d3
+M4 = m4 -I templates
+IMAGES = $(patsubst %.tdl.in, %.xml, $(wildcard *.tdl.in))
+OZ_INSTALL = oz-install -t 14400 -d3
 
 all: $(IMAGES)
 
-%.xml: %.tdl
-	$(OZ_INSTALL) $(shell ./findauto.py $<) -x $@ $<
+%.auto: %.auto.in
+	$(M4) $< > $@
+
+%.tdl: %.tdl.in
+	$(M4) $< > $@
+
+%.xml: %.auto %.tdl
+	$(OZ_INSTALL) -x $@ -a $^

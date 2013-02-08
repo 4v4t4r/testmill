@@ -1,0 +1,16 @@
+<template>
+  <name>CentOS-MAJOR</name>
+  <description>CentOS VERSION - BITS bit</description>
+  <os>
+    <name>CentOS-MAJOR</name>
+    <version>MINOR</version>
+    <arch>ARCH</arch>
+    <rootpw>ROOTPW</rootpw>
+    <install type="iso">
+      <iso>http://centos.fastbull.org/centos/VERSION/isos/ARCH/CentOS-VERSION-ARCH-bin-DVDNR.iso</iso>
+    </install>
+  </os>
+  <disk>
+    <size>16</size>
+  </disk>
+</template>

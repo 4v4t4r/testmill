@@ -1,0 +1,16 @@
+<template>
+  <name>Fedora-VERSION</name>
+  <description>Fedora VERSION - BITS bit</description>
+  <os>
+    <name>Fedora</name>
+    <version>VERSION</version>
+    <arch>ARCH</arch>
+    <rootpw>ROOTPW</rootpw>
+    <install type="iso">
+      <iso>http://download.fedoraproject.org/pub/fedora/linux/releases/VERSION/Fedora/ARCH/iso/Fedora-VERSION-ARCH-netinst.iso</iso>
+    </install>
+  </os>
+  <disk>
+    <size>16</size>
+  </disk>
+</template>

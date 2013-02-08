@@ -1,0 +1,6 @@
+define(VERSION, ifdef(`MINOR', MAJOR`.'MINOR, MAJOR))dnl
+define(ARCH, ifelse(BITS, 64, x86_64, i386))dnl
+define(HOSTNAME, `ubuntu'patsubst(MAJOR, \., `'))dnl
+define(ROOTPW, ravelloCloud)dnl
+define(PY3_VERSION, 3.2)dnl
+define(HAVE_PIP3, ifelse(MAJOR, 12.04, 0, 1))dnl

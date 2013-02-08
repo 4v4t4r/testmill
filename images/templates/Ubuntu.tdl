@@ -1,0 +1,16 @@
+<template>
+  <name>Ubuntu-MAJOR</name>
+  <description>Ubuntu MAJOR - BITS bit</description>
+  <os>
+    <name>Ubuntu</name>
+    <version>MAJOR</version>
+    <arch>ARCH</arch>
+    <rootpw>ROOTPW</rootpw>
+    <install type="iso">
+      <iso>http://releases.ubuntu.com/VERSION/ubuntu-VERSION-server-ifelse(ARCH, x86_64, amd64, i386).iso</iso>
+    </install>
+  </os>
+  <disk>
+    <size>16</size>
+  </disk>
+</template>
