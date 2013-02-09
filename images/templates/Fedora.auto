@@ -1,0 +1,114 @@
+install
+text
+keyboard us
+lang en_US.UTF-8
+skipx
+network --device eth0 --bootproto dhcp --hostname HOSTNAME --noipv6
+rootpw %`ROOTPW'%
+firewall --disabled
+authconfig --enableshadow --enablemd5
+selinux --enforcing
+timezone --utc Etc/UTC
+reboot
+part / --fstype FSTYPE --onpart /dev/vda1
+part swap --fstype swap --onpart /dev/vda2
+bootloader --location=mbr --timeout=2 --append="rhgb quiet"
+
+%packages
+@core
+@Development Tools
+tar
+gzip
+bzip2
+xz
+mlocate
+cloud-init
+bzr
+python-devel
+python-setuptools
+python-pip
+python-nose
+python3-devel
+python3-setuptools
+ifelse(VERSION, 16,`dnl', python3-pip)
+python3-nose
+ruby-devel
+rubygems
+rubygem-rake
+rubygem-bundler
+rubygem-rspec
+java-1.7.0-openjdk-devel
+maven
+apache-ivy
+mysql-server
+postgresql-server
+%end
+
+%pre
+exec >/dev/tty6 2>&1
+parted -s /dev/vda -- mklabel msdos
+parted -s /dev/vda -- mkpart primary FSTYPE 2048s -4194305s
+parted -s /dev/vda -- mkpart primary linux-swap -4194304s -1s
+parted -s /dev/vda -- set 1 boot on
+partprobe /dev/vda
+%end
+
+%post --nochroot
+# Make name resolution work for post-install, needed for Fedora-16
+cp /etc/resolv.conf /mnt/sysimage/etc
+%end
+
+%post
+# Logging information is shown on TTY6 (ALT-F6)
+exec >/dev/tty6 2>&1
+
+# Lock user root. Create user ravello (pw: 'ravelloCloud')
+# that has full sudo access. And disable ssh password auth.
+passwd -l root
+useradd -m ravello -p PWjhvSeSjMdYI
+gpasswd -a ravello wheel
+sed -i -e "s/^PasswordAuthentication .*$/#&/" \
+        -e "$ a PasswordAuthentication no" \
+        /etc/ssh/sshd_config
+sed -i -e "s/^%wheel.*$/#&/" \
+        -e "$ a %wheel ALL=(ALL) NOPASSWD: ALL" \
+        /etc/sudoers
+
+# Make sure network interfaces do not get renamed. Otherwise we
+# will not have connectivity.
+sed -i -e "/^HWADDR=/d" \
+        -e "/^UUID=/d" \
+        /etc/sysconfig/network-scripts/ifcfg-eth0
+rm -f /lib/udev/rules.d/70-persistent-net.rules
+rm -f /lib/udev/rules.d/71-biosdevname.rules
+rm -f /var/lib/dhclient/*
+
+# This tricky cloud-init configuration patch works on both cloud-init
+# version 0.6 as well as 0.7.
+sed -i -e "s/ec2-user/ravello/" \
+        -e "$ a user: ravello" \
+        -e "$ a users: default" \
+        -e "$ a datasource_list: [ NoCloud ]" \
+        /etc/cloud/cloud.cfg
+
+# Make sure sshd starts only after cloud-init has completed.
+# Cloud-init deployes authorized keys, and we want to prevent
+# window where ssh is listening without keys.
+sed -i -e "/\[Unit\]/ a Before=sshd.service" \
+        /lib/systemd/system/cloud-init.service
+
+# Make sure we have a basic Python environment that is identical over
+# the different images. We provide a "pip", "pip3", "easy_install"
+# and "easy_install3".
+ln -s pip-python /usr/bin/pip
+ifelse(HAVE_PIP3, 0,
+`easy_install-PY3_VERSION pip==1.2.1
+ln -s pip-PY3_VERSION /usr/bin/pip3',
+`ln -s pip-python3 /usr/bin/pip3')
+ln -s easy_install-PY3_VERSION /usr/bin/easy_install3
+
+# Clojure. Just install Leiningen. When it is first run, it will drag in
+# everything else.
+curl https://raw.github.com/technomancy/leiningen/preview/bin/lein -o /usr/bin/lein
+chmod 755 /usr/bin/lein
+%end
