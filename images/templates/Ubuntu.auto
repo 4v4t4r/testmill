@@ -60,10 +60,19 @@ d-i preseed/late_command string \
         -e "$ a datasource_list: [ NoCloud ]" \
         /etc/cloud/cloud.cfg; \
     in-target sh -c 'rm -f /etc/cloud/cloud.cfg.d/*_dpkg.cfg'; \
+ifelse(PATCH_CLOUDINIT, 1,
+`    in-target sed -i -e "s/ubuntu/ravello/" \
+        /usr/share/pyshared/cloudinit/distros/ubuntu.py; \
+')dnl
 ifelse(HAVE_PIP3, 1,
-`    in-target ln -s pip-PY3_VERSION /usr/bin/pip3',
-`    in-target easy_install3 pip==1.2.1; \
+`    in-target ln -s pip-PY3_VERSION /usr/bin/pip3'; \
+,`    in-target easy_install3 pip==1.2.1; \
     in-target ln -s pip-PY3_VERSION /usr/local/bin/pip3; \
-    in-target rm -f /usr/local/bin/pip')
+    in-target rm -f /usr/local/bin/pip; \
+')dnl
+    in-target sh -c 'echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64; \
+            export JAVA_HOME" > /etc/profile.d/java.sh'; \
+    in-target chmod 644 /etc/profile.d/java.sh; \
+    :
 
 d-i finish-install/reboot_in_progress note
