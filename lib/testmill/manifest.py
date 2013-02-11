@@ -293,8 +293,10 @@ def check_manifest_entities(manifest):
     check('/languages/*/vms/tasks/*/class', can_load_class)
 
 
-def default_manifest():
+def default_manifest(required=True):
     """The default process of bootstrapping and checking the manifest."""
+    if not manifest_exists() and not required:
+        return
     manifest = load_manifest()
     check_manifest(manifest)
     add_defaults(manifest)

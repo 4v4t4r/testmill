@@ -28,6 +28,15 @@ def prompt(prompt):
     env._partial_line = False
     return line
 
+def confirm(message):
+    """Ask the user for confirmation for an action."""
+    message = '{0} (y/n): '.format(message)
+    result = prompt(message)
+    while result not in ('y', 'n'):
+        console.info("Please enter 'y' or 'n'.")
+        result = console.prompt(message)
+    return result == 'y'
+
 def getpass(prompt):
     """Prompt the user for a password."""
     env._partial_line = True

@@ -23,7 +23,8 @@ import functools
 import textwrap
 import copy
 
-from testmill import cache, console, keypair, util, ravello, error
+from testmill import (cache, console, keypair, util, ravello, error,
+                      manifest, inflect)
 from testmill.state import env
 
 
@@ -194,11 +195,12 @@ def reuse_existing_application(appdef):
             for vm in vms:
                 if vm['name'] == vmdef['name']:
                     break
-            image = cache.get_image(name=vmdef['image'])
-            if not image:
-                continue
-            if vm['shelfVmId'] != image['id']:
-                continue
+            if not blueprint:
+                image = cache.get_image(name=vmdef['image'])
+                if not image:
+                    continue
+                if vm['shelfVmId'] != image['id']:
+                    continue
             userdata = vm.get('customVmConfigurationData', {})
             keypair = userdata.get('keypair')
             if keypair.get('id') != pubkey['id']:
@@ -244,14 +246,18 @@ def create_new_application(appdef):
     bpname = appdef.get('blueprint')
     if bpname:
         blueprint = cache.get_blueprint(name=bpname)
-        blueprint = cache.get_full_blueprint(blueprint['id'])
+        app = env.api.create_application(app, blueprint)
+        app = cache.get_full_application(app['id'])
+        for vm in get_vms(app):
+            vm.setdefault('customVmConfigurationData', {})
+            vm['customVmConfigurationData']['keypair'] = env.public_key
     else:
         vms = []
         for vmdef in appdef.get('vms', []):
             vm = create_new_vm(vmdef)
             vms.append(vm)
         app['applicationLayer'] = { 'vm': vms }
-    app = env.api.create_application(app)
+        app = env.api.create_application(app)
     env.api.publish_application(app)
     app = cache.get_full_application(app['id'], force_reload=True)
     return app
@@ -272,7 +278,7 @@ def create_or_reuse_application(appdef, force_new):
         app = create_new_application(appdef)
         parts = app['name'].split(':')
         console.info('Created new application `{0}:{1}`.',
-                     parts[0], parts[1])
+                     parts[1], parts[2])
     return app
 
 
@@ -306,3 +312,34 @@ def get_vm(application, vmname):
 
 def get_vms(application):
     return application.get('applicationLayer', {}).get('vm', [])
+
+
+def default_application(appname):
+    """The default application loading function."""
+    parts = appname.split(':')
+    if len(parts) in (1, 2) and env.manifest is None:
+        error.raise_error('No manifest found ({0}).\n'
+                          'Please specify the fully qualified app name.\n'
+                          "Use 'ravtest ps -a' for a list.",
+                          manifest.manifest_name())
+    if len(parts) in (1, 2):
+        project = env.manifest['project']['name']
+        console.info('Project name is `{0}`.', project)
+        defname = parts[0]
+        instance = parts[1] if len(parts) == 2 else None
+    elif len(parts) == 3:
+        project, defname, instance = parts
+    else:
+        error.raise_error('Illegal application name: `{0}`.', appname)
+
+    apps = cache.get_applications(project, defname, instance)
+    if len(apps) == 0:
+        error.raise_error('No instances of application `{0}` exist.',
+                          defname)
+    elif len(apps) > 1:
+        error.raise_error('Multiple instances of `{0}` exist.\n'
+                          'Use `ravtest ps` to list the instances and then\n'
+                          'specify the application with its instance id.',
+                          defname)
+    app = cache.get_full_application(apps[0]['id'])
+    return app

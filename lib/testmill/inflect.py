@@ -18,7 +18,7 @@ from __future__ import absolute_import, print_function
 # These inflection functions are trivial and only work for regular nouns
 # and verbs. Special cases can be added as and when needed.
 
-def plural_noun(noun, count):
+def plural_noun(noun, count=2):
     """Takes a singular English noun ``noun`` and returns a plural version,
     depending on ``count``."""
     if count == 1:
@@ -26,10 +26,14 @@ def plural_noun(noun, count):
     else:
         return noun + 's'
 
-def plural_verb(verb, count):
+def plural_verb(verb, count=2):
     """Return the plural conjugation of the English verb ``verb``, depending
     on ``count``."""
     if count == 1:
+        if verb == 'was':
+            return 'was'
         return verb + 's'
     else:
+        if verb == 'was':
+            return 'were'
         return verb

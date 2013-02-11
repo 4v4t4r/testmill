@@ -47,11 +47,21 @@ def get_applications(project=None, defname=None, instance=None):
     return applications
 
 
-def get_blueprints():
+def get_blueprints(project=None, defname=None, instance=None):
     """Return a list of all blueprints."""
+    blueprints = []
     if not hasattr(env, '_blueprints'):
         env._blueprints = env.api.get_blueprints()
-    return env._blueprints
+    for bp in env._blueprints:
+        parts = bp.get('name', '').split(':')
+        if len(parts) != 3:
+            continue
+        if project is not None and parts[0] != project or \
+                defname is not None and parts[1] != defname or \
+                instance is not None and parts[2] != instance:
+            continue
+        blueprints.append(bp)
+    return blueprints
 
 
 def get_image(id=None, name=None):
@@ -126,7 +136,7 @@ def get_full_blueprint(id, force_reload=False):
     if not hasattr(env, '_full_blueprints'):
         env._full_blueprints = {}
     bp = env._full_blueprints.get(id)
-    if app is None or force_reload:
+    if bp is None or force_reload:
         bp = env.api.get_blueprint(id)
-        env._full_blueprint[id] = bp
+        env._full_blueprints[id] = bp
     return bp

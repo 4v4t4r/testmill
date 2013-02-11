@@ -80,9 +80,7 @@ def do_run(args, env):
     else:
         error.raise_error("Unknown application `{0}`.", appname)
 
-    vms = appdef.get('vms', [])
-
-    vms = set((vm['name'] for vm in appdef['vms']))
+    vms = set((vm['name'] for vm in appdef.get('vms', [])))
     if args.vms:
         only = set((name for name in args.vms.split(',')))
         if not only <= vms:

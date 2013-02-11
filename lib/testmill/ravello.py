@@ -383,18 +383,24 @@ class RavelloClient(object):
         applications = response.entity.get('appMetadata', [])
         return applications
 
-    def create_application(self, application):
+    def create_application(self, application, blueprint=None):
         """Create a new application."""
-        application['appMetadata'] = {}
-        for key in list(application):
-            if key not in ('appMetadata', 'applicationLayer'):
-                application['appMetadata'][key] = application[key]
-                del application[key]
-        response = self._make_request('POST', '/instance', application)
-        application = response.entity
-        for key in list(application['appMetadata']):
-            application[key] = application['appMetadata'][key]
-        del application['appMetadata']
+        if blueprint is not None:
+            url = '/blueprint/{0}/instance/{1}' \
+                        .format(blueprint['id'], application['name'])
+            response = self._make_request('POST', url)
+            application = response.entity
+        else:
+            application['appMetadata'] = {}
+            for key in list(application):
+                if key not in ('appMetadata', 'applicationLayer'):
+                    application['appMetadata'][key] = application[key]
+                    del application[key]
+            response = self._make_request('POST', '/instance', application)
+            application = response.entity
+            for key in list(application['appMetadata']):
+                application[key] = application['appMetadata'][key]
+            del application['appMetadata']
         return application
 
     def publish_application(self, application, deploy=None):
@@ -402,6 +408,11 @@ class RavelloClient(object):
         request = deploy.copy() if deploy else {}
         request['instanceId'] = application['id']
         self._make_request('POST', '/instance/publish', request)
+
+    def remove_application(self, application):
+        """Remove an application."""
+        url = '/instance/{}'.format(application['id'])
+        self._make_request('DELETE', url)
 
     # VMs
 
@@ -431,3 +442,19 @@ class RavelloClient(object):
         response = self._make_request('GET', '/blueprints/%s' % self._project)
         blueprints = response.entity.get('appMetadata', [])
         return blueprints
+
+    def create_blueprint(self, name, application):
+        """Create a new blueprint ``name`` based on ``application``."""
+        offline = 'true'
+        for vm in application.get('applicationLayer', {}).get('vm', []):
+            if application['state'] != 'STOPPED':
+                offline = 'false'
+                break
+        url = '/instance/{0}/blueprint/{1}/{2}' \
+                    .format(application['id'], name, offline)
+        self._make_request('POST', url)
+
+    def remove_blueprint(self, blueprint):
+        """Remove a blueprint."""
+        url = '/blueprint/{}'.format(blueprint['id'])
+        self._make_request('DELETE', url)

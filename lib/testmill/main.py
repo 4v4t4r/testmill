@@ -53,9 +53,12 @@ description = textwrap.dedent("""\
     The available commands are:
         login       log in to Ravello
         logout      log out from Ravello
-        ps          show running applications
+        ps          show applications or blueprints
         run         run a remote command
         ssh         connect to an application
+        save        save an application to a blueprint
+        restore     restore an appliation from a blueprint
+        clean       clean up applications or blueprints
         lint        check a project manifest
 
     Use 'ravtest <command> --help' to get help for a command.
@@ -63,7 +66,8 @@ description = textwrap.dedent("""\
 
 
 from testmill import (command_login, command_ps, command_lint,
-                      command_logout, command_run, command_ssh)
+                      command_logout, command_run, command_ssh,
+                      command_save, command_restore, command_clean)
 
 subcommands = {
     'login': (command_login.do_login, command_login.add_args),
@@ -71,7 +75,10 @@ subcommands = {
     'ps': (command_ps.do_ps, command_ps.add_args),
     'run': (command_run.do_run, command_run.add_args),
     'ssh': (command_ssh.do_ssh, command_ssh.add_args),
-    'lint': (command_lint.do_lint, command_lint.add_args)
+    'lint': (command_lint.do_lint, command_lint.add_args),
+    'save': (command_save.do_save, command_save.add_args),
+    'restore': (command_restore.do_restore, command_restore.add_args),
+    'clean': (command_clean.do_clean, command_clean.add_args)
 }
 
 
