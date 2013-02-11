@@ -82,9 +82,9 @@ def do_run(args, env):
 
     vms = appdef.get('vms', [])
 
-    vms = set((vm['name'].lower() for vm in appdef['vms']))
+    vms = set((vm['name'] for vm in appdef['vms']))
     if args.vms:
-        only = set((name.lower() for name in args.vms.split(',')))
+        only = set((name for name in args.vms.split(',')))
         if not only <= vms:
             unknown = [name for name in only if name not in vms]
             what = util.plural_noun('virtual machine', len(unknown))

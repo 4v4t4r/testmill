@@ -51,7 +51,7 @@ def get_image(id=None, name=None):
         raise ValueError('Specify either "id" or "name" but not both.')
     for img in get_images():
         if name is not None:
-            if name.lower() == img['name'].lower():
+            if name == img['name']:
                 return img
         elif id is not None:
             if img['id'] == id:
@@ -65,7 +65,7 @@ def get_application(id=None, name=None):
         raise ValueError('Specify either "id" or "name" but not both.')
     for app in get_applications():
         if name is not None:
-            if name.lower() == app['name'].lower():
+            if name == app['name']:
                 return app
         elif id is not None:
             if app['id'] == id:
@@ -79,7 +79,7 @@ def get_blueprint(id=None, name=None):
         raise ValueError('Specify either "id" or "name" but not both.')
     for bp in get_blueprints():
         if name is not None:
-            if name.lower() == bp['name'].lower():
+            if name == bp['name']:
                 return bp
         elif id is not None:
             if bp['id'] == id:
@@ -94,7 +94,7 @@ def get_full_image(id, force_reload=False):
     if img is None or force_reload:
         img = env.api.get_image(id)
         # XXX: remove "TestMill:" prefix
-        if img['name'].lower().startswith('testmill:'):
+        if img['name'].startswith('TestMill:'):
             img['name'] = img['name'][9:]
         env._full_images[id] = img
     return img

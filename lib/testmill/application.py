@@ -101,7 +101,7 @@ def wait_until_application_accepts_ssh(app, vms, timeout=300, poll_timeout=5):
     """
     waitaddrs = set((vm['dynamicMetadata']['externalIp']
                      for vm in app['applicationLayer']['vm']
-                     if vm['name'].lower() in vms))
+                     if vm['name'] in vms))
     aliveaddrs = set()
     end_time = time.time() + timeout
     # For the intricate details on non-blocking connect()'s, see Stevens,
