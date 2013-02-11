@@ -84,7 +84,7 @@ def show_progress(progress):
 def end_progressbar(text):
     """End a progress bar with "text"."""
     if getattr(env, '_progressbar_active', False):
-        write(' {}\n'.format(text))
+        write(' {0}\n'.format(text))
     env._progressbar_header = None
     env._progressbar_active = False
     env._partial_line = False
@@ -120,14 +120,14 @@ def warning(message, *args, **kwds):
     """Show a warning."""
     if args or kwds:
         message = message.format(*args, **kwds)
-    writeln_err('Warning: {}'.format(message))
+    writeln_err('Warning: {0}'.format(message))
 
 def error(message, *args, **kwds):
     """Trigger an error."""
     complete_partial_line()
     if args or kwds:
         message = message.format(*args, **kwds)
-    writeln_err('Error: {}'.format(message))
+    writeln_err('Error: {0}'.format(message))
 
 def show_exception(exc):
     error(str(exc))

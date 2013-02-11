@@ -18,7 +18,7 @@ import argparse
 import textwrap
 
 from testmill import (console, manifest, keypair, login, error,
-                      application, tasks, util)
+                      application, tasks, util, inflect)
 from testmill.state import env
 
 
@@ -78,7 +78,7 @@ def do_run(args, env):
         if appdef['name'] == appname:
             break
     else:
-        error.raise_error("Unknown application '{}'.", appname)
+        error.raise_error("Unknown application `{0}`.", appname)
 
     vms = appdef.get('vms', [])
 
@@ -87,8 +87,8 @@ def do_run(args, env):
         only = set((name for name in args.vms.split(',')))
         if not only <= vms:
             unknown = [name for name in only if name not in vms]
-            what = util.plural_noun('virtual machine', len(unknown))
-            error.raise_error("Unknown {}: {}", ', '.join(unknown), what)
+            what = inflect.plural_noun('virtual machine', len(unknown))
+            error.raise_error("Unknown {0}: {1}", ', '.join(unknown), what)
         vms = [name for name in vms if name in only]
     if not vms:
         error.raise_error('No virtual machines in application.')
@@ -97,16 +97,13 @@ def do_run(args, env):
         for vm in appdef['vms']:
             vm['tasks'] = [{'name': 'execute', 'commands': [args.command]}]
 
-    what = util.plural_noun('virtual machine', len(vms))
-    console.info('Running tasks on {} {}.', len(vms), what)
-
     app = application.create_or_reuse_application(appdef, args.new)
     app = application.wait_for_application(app, vms)
 
     ret = tasks.run_all_tasks(app, vms)
 
-    console.info('\n== The following services will be available for {} minutes:\n',
-                 appdef['keepalive'])
+    console.info('\n== The following services will be available for {0} '
+                 'minutes:\n', appdef['keepalive'])
 
     for vm in app['applicationLayer']['vm']:
         if vm['name'] not in vms:
@@ -114,11 +111,11 @@ def do_run(args, env):
         svcs = vm.get('suppliedServices')
         if not svcs:
             continue
-        console.info("On virtual machine '{}':", vm['name'])
+        console.info('On virtual machine `{0}`:', vm['name'])
         for svc in svcs:
             svc = svc['baseService']
             addr = util.format_service(vm, svc)
-            console.info('    * {}: {}', svc['name'], addr)
+            console.info('    * {0}: {1}', svc['name'], addr)
         console.info('')
 
     return error.EX_OK if ret == 0 else error.EX_SOFTWARE

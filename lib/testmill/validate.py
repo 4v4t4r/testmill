@@ -21,7 +21,7 @@ class ValidationError(RuntimeError):
 
 def pathref(path):
     """Return a path reference for node path ``path``."""
-    path = ['[{}]'.format(pe) if isinstance(pe, int) else pe
+    path = ['[{0}]'.format(pe) if isinstance(pe, int) else pe
             for pe in path]
     return '/' + '/'.join(path)
 
@@ -64,7 +64,7 @@ def generate_nodes(node, path, nodepath=None):
     elif name.startswith('!'):
         name = name[1:]
         if name not in node:
-            msg = "Mandatory key '{}' missing.".format(name)
+            msg = "Mandatory key '{0}' missing.".format(name)
             raise ValidationError(msg, nodepath)
         nodepath.append(name)
         node = node.get(name)
@@ -103,5 +103,5 @@ def validate_node(node, path, check):
                 raise ValidationError(msg, nodepath)
         else:
             if not check(node, nodepath):
-                msg = "'{}' failed".format(chk.__name__)
+                msg = "'{0}' failed".format(chk.__name__)
                 raise ValidationError(msg, nodepath)

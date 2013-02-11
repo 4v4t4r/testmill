@@ -29,7 +29,7 @@ import fabric.network
 import fabric.api as fab
 
 import testmill
-from testmill import console, versioncontrol, util, error
+from testmill import console, versioncontrol, util, error, inflect, console
 from testmill.state import env
 
 if sys.version_info[0] == 3:
@@ -57,6 +57,7 @@ def run_all_tasks(app, vms):
         host_info[ipaddr] = vm['name']
 
     env.test_id = os.urandom(16).encode('hex')
+    console.info('Starting run `{0}`.', env.test_id)
     env.host_info = host_info
     env.start_time = int(time.time())
     env.lock = multiprocessing.Lock()
@@ -84,7 +85,9 @@ def run_all_tasks(app, vms):
     fabric.state.output.status = env.debug
 
     # This is where it all happens...
-    console.info('Executing tasks...')
+    noun = inflect.plural_noun('virtual machine', len(vms))
+    console.info('Executing tasks on {0} {1}...', len(vms), noun)
+
     fabric.tasks.execute(run_tasklist, env)
 
     errors = set()
@@ -92,14 +95,14 @@ def run_all_tasks(app, vms):
         vmstate = env.shared_state[vmname]
         if vmstate.get('return_code', 0) != 0:
             taskname = vmstate.get('current_task', '')
-            errors.add("'{}' on '{}'".format(taskname, vmname))
+            errors.add('`{0}` on `{1}`'.format(taskname, vmname))
 
     if not errors:
         console.info('All tasks were executed succesfully!')
     else:
-        what = util.plural_noun('task', len(errors))
+        what = inflect.plural_noun('task', len(errors))
         errapps = ', '.join(errors)
-        console.error('The following {} failed: {}', what, errapps)
+        console.error('The following {0} failed: {1}', what, errapps)
 
     fabric.network.disconnect_all()
     return len(errors)
@@ -112,7 +115,7 @@ def preinit():
     with file(fname) as fin:
         script = fin.read()
     shutdown_urls = []
-    url_template = '{}/deployment/app/{}/vm/{}/stop'
+    url_template = '{0}/deployment/app/{1}/vm/{2}/stop'
     app = env.application
     myself_last = sorted(app['applicationLayer']['vm'],
                          key=lambda vm: vm['id'] != env.vm['id'])
@@ -124,9 +127,9 @@ def preinit():
     script = script.format(test_id=env.test_id, keepalive=keepalive,
                            api_cookie=env.api._cookie,
                            shutdown_urls=shutdown_urls)
-    script_name = '{}.preinit'.format(env.test_id)
+    script_name = '{0}.preinit'.format(env.test_id)
     fab.put(io.StringIO(script), script_name)
-    command = 'exec $SHELL {}'.format(script_name)
+    command = 'exec $SHELL {0}'.format(script_name)
     fab.run(command)
 
 
@@ -139,8 +142,8 @@ def show_output(task):
     output = task.stdout
     if (not output or output.isspace()) and not env.debug:
         return
-    console.writeln("\n== Output for task '{}' on VM '{}':\n"
-                        .format(task.name, env.vm['name']))
+    console.writeln('\n== Output for task `{0}` on VM `{1}`:\n',
+                    task.name, env.vm['name'])
     console.writeln(output)
     console.writeln()
 
@@ -172,7 +175,7 @@ def synchronize_on_task(taskname, timeout=600):
             break
         time.sleep(5)
         if time.time() > end_time:
-            error.raise_error("Timeout waiting for task '{}'.", taskname)
+            error.raise_error("Timeout waiting for task `{0}`.", taskname)
     return state
 
 
@@ -216,9 +219,9 @@ def run_tasklist(passed_env):
 
     def debug(message, *args, **kwargs):
         message = message.format(*args, **kwargs)
-        console.debug('[VM {}] {}', vmname, message)
+        console.debug('[VM {0}] {1}', vmname, message)
 
-    debug('Running task list for {}', host)
+    debug('Running task list for `{0}`', host)
 
     try:
         debug('Pre-initialize VM')
@@ -226,7 +229,7 @@ def run_tasklist(passed_env):
 
         sync_task = None
         for taskdef in vmdef['tasks']:
-            debug("Running task '{}'.", taskdef['name'])
+            debug('Running task `{0}`.', taskdef['name'])
             env.shell_env['RAVELLO_TASK_NAME'] = taskdef['name']
 
             clsname = taskdef.get('class', 'testmill.tasks.Task')
@@ -238,12 +241,12 @@ def run_tasklist(passed_env):
             env.shared_state[vmname] = vmstate  # sync shared state
 
             if sync_task:
-                debug("Sync state on task '{}'.", sync_task)
+                debug('Sync state on task `{0}`.', sync_task)
                 completed = synchronize_on_task(sync_task)
                 for name,state in completed.items():
                     update = state['shell_env_update'].get(sync_task)
                     if update:
-                        debug('Updated {} environment vars.', len(update))
+                        debug('Updated {0} environment vars.', len(update))
                         env.shell_env.update(update)
             task.run()
 
@@ -272,10 +275,10 @@ def create_script(taskname, commands):
         script = fin.read()
     warn_only = '1' if env.args.continue_ else '0'
     lines = []
-    tmpl = '{}={}; export {}'
+    tmpl = '{0}={1}; export {0}'
     for key,value in env.shell_env.items():
         escaped = util.shell_escape(str(value))
-        lines.append(tmpl.format(key, escaped, key))
+        lines.append(tmpl.format(key, escaped))
     shell_vars = '\n'.join(lines)
     shell_commands = '\n'.join(commands)
     script = script.format(warn_only=warn_only, shell_vars=shell_vars,
@@ -320,7 +323,7 @@ class Task(fabric.tasks.Task):
         """
         if commands is None:
             commands = self.commands
-        script_name = 'runs/{}/.ravello/{}.sh'.format(env.test_id, self.name)
+        script_name = 'runs/{0}/.ravello/{1}.sh'.format(env.test_id, self.name)
         script = create_script(self.name, commands)
         fab.put(io.StringIO(script), script_name)
         runargs = {'shell': False, 'pty': True, 'warn_only': True }
@@ -337,7 +340,7 @@ class Task(fabric.tasks.Task):
         ret = fab.run(command, **runargs)
         self.stdout = ret
         update = io.StringIO()
-        remote_name = 'runs/{}/.ravello/{}.env-update' \
+        remote_name = 'runs/{0}/.ravello/{1}.env-update' \
                     .format(env.test_id, self.name)
         fab.get(remote_name, update)
         update = parse_env_update(update.getvalue())
@@ -357,10 +360,10 @@ class SysinitTask(Task):
             md.update(command + '\000')
         token = md.hexdigest()
         commands = []
-        tmpl = 'test -f $RAVELLO_HOME/sysinit/{}.done && exit 0'
+        tmpl = 'test -f $RAVELLO_HOME/sysinit/{0}.done && exit 0'
         commands.append(tmpl.format(token))
         commands.extend(self.commands)
-        tmpl = 'touch $RAVELLO_HOME/sysinit/{}.done'
+        tmpl = 'touch $RAVELLO_HOME/sysinit/{0}.done'
         commands.append(tmpl.format(token))
         super(SysinitTask, self).run(commands=commands, user='root')
 
@@ -372,7 +375,7 @@ def create_archive():
     except OSError:
         st = None
     if st and not stat.S_ISDIR(st.st_mode):
-        error.raise_error("Path '{}' exists but is not a directory.",
+        error.raise_error("Path `{0}` exists but is not a directory.",
                           ravello_dir)
     elif st is None:
         os.mkdir(ravello_dir)
@@ -402,10 +405,10 @@ class DeployTask(Task):
             # Run under the lock to ensure that only one process
             # creates the archive
             distpath = create_archive()
-        remote_dir = 'runs/{}/.ravello'.format(env.test_id)
+        remote_dir = 'runs/{0}/.ravello'.format(env.test_id)
         fab.put(distpath, remote_dir)
         _, distname = os.path.split(distpath)
-        command = 'tar xpfz .ravello/{}'.format(distname)
+        command = 'tar xpfz .ravello/{0}'.format(distname)
         super(DeployTask, self).run(commands=[command])
 
     def remote_checkout(self, version):

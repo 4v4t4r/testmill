@@ -20,6 +20,8 @@ import stat
 import yaml
 import subprocess
 
+from testmill import inflect
+
 
 def prettify(obj):
     """Pretty print a parsed YAML document."""
@@ -86,7 +88,7 @@ def get_config_dir():
     if st is None:
         os.mkdir(configdir)
     elif st and not stat.S_ISDIR(st.st_mode):
-        m = '{} exists but is not a directory'
+        m = '{0} exists but is not a directory'
         raise OSError(m.format(configdir))
     return configdir
 
@@ -154,15 +156,15 @@ def format_service(vm, svc):
     addr = vm['dynamicMetadata']['externalIp']
     port = svc['portRange']
     if port == '80':
-        addr = 'http://{}/'.format(addr)
+        addr = 'http://{0}/'.format(addr)
     elif port == '443':
-        addr = 'https://{}/'.format(addr)
+        addr = 'https://{0}/'.format(addr)
     elif port == '8080':
-        addr = 'http://{}:{}/'.format(addr, port)
+        addr = 'http://{0}:{1}/'.format(addr, port)
     elif port == '8443':
-        addr = 'https://{}:{}/'.format(addr, port)
+        addr = 'https://{0}:{1}/'.format(addr, port)
     else:
-        addr = '{} port {}'.format(addr, port)
+        addr = '{0} port {1}'.format(addr, port)
     return addr
 
 
@@ -174,20 +176,13 @@ def format_timedelta(t):
         return '< 1 minute'
     elif t < 3600:
         count = t//60
-        unit = plural_noun('minute', count)
-        return '{} {}'.format(count, unit)
+        unit = inflect.plural_noun('minute', count)
+        return '{0} {1}'.format(count, unit)
     elif t < 86400:
         count = t//3600
-        unit = plural_noun('hour', count)
-        return '{} {}'.format(count, unit)
+        unit = inflect.plural_noun('hour', count)
+        return '{0} {1}'.format(count, unit)
     else:
         count = t//86400
-        unit = plural_noun('day', count)
-        return '{} {}'.format(count, unit)
-    
-
-def plural_noun(noun, count):
-    if count == 1:
-        return noun
-    else:
-        return noun + 's'
+        unit = inflect.plural_noun('day', count)
+        return '{0} {1}'.format(count, unit)

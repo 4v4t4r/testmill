@@ -30,11 +30,21 @@ def get_images():
     return env._images
 
 
-def get_applications():
+def get_applications(project=None, defname=None, instance=None):
     """Return a list of all applications."""
     if not hasattr(env, '_applications'):
         env._applications = env.api.get_applications()
-    return env._applications
+    applications = []
+    for app in env._applications:
+        parts = app.get('name', '').split(':')
+        if len(parts) != 3:
+            continue
+        if project is not None and parts[0] != project or \
+                defname is not None and parts[1] != defname or \
+                instance is not None and parts[2] != instance:
+            continue
+        applications.append(app)
+    return applications
 
 
 def get_blueprints():

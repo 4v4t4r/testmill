@@ -85,7 +85,7 @@ def wait_until_application_is_up(app, timeout=900, poll_timeout=10):
             return
         console.show_progress(state[0])
         time.sleep(max(0, poll_end_time - time.time()))
-    error.raise_error("Application '{}' did not come up within {} seconds.",
+    error.raise_error("Application `{0}` did not come up within {1} seconds.",
                       app['name'], timeout)
 
 
@@ -156,8 +156,10 @@ def wait_until_application_accepts_ssh(app, vms, timeout=300, poll_timeout=5):
         time.sleep(max(0, poll_end_time - time.time()))
     unreachable = set((vm['name'] for vm in app['applicationLayer']['vm']
                        if vm['dynamicMetadata']['externalIp'] in waitaddrs))
-    error.raise_error("VM(s) '{}' did not become reachable within {} seconds.",
-                      "', '".join(sorted(unreachable)), timeout)
+    noun = inflect.plural_noun('VM', len(unreachable))
+    vmnames = '`{0}`'.format('`, `'.join(sorted(unreachable)))
+    error.raise_error('{0} `{1}` did not become reachable within {2} seconds.',
+                      noun, vmnames, timeout)
 
 
 vm_reuse_states = ['STARTED', 'STARTING', 'STOPPED', 'PUBLISHING']
@@ -223,7 +225,7 @@ def create_new_vm(vmdef):
     for svcdef in vmdef.get('services', []):
         if isinstance(svcdef, int):
             port = str(svcdef)
-            svcdef = 'port-{}'.format(svcdef)
+            svcdef = 'port-{0}'.format(svcdef)
         else:
             port = socket.getservbyname(svcdef)
         svc = { 'globalService': True, 'id': ravello.random_luid(),
@@ -236,7 +238,7 @@ def create_new_vm(vmdef):
 def create_new_application(appdef):
     """Create a new application based on ``appdef``."""
     project = env.manifest['project']
-    template = '{}:{}'.format(project['name'], appdef['name'])
+    template = '{0}:{1}'.format(project['name'], appdef['name'])
     name = util.get_unused_name(template, cache.get_applications())
     app = { 'name': name }
     bpname = appdef.get('blueprint')
@@ -262,12 +264,15 @@ def create_or_reuse_application(appdef, force_new):
         app = reuse_existing_application(appdef)
         if app is not None:
             state = get_application_state(app)
-            console.info("Re-using {} application '{}'."
-                            .format(state.lower(), app['name']))
+            parts = app['name'].split(':')
+            console.info('Re-using {0} application `{1}:{2}`.',
+                         state.lower(), parts[1], parts[2])
             start_application(app)
     if app is None:
         app = create_new_application(appdef)
-        console.info("Created new application '{}'.".format(app['name']))
+        parts = app['name'].split(':')
+        console.info('Created new application `{0}:{1}`.',
+                     parts[0], parts[1])
     return app
 
 
@@ -283,7 +288,7 @@ def wait_for_application(app, vms):
     # starts up.
     state = get_application_state(app)
     extra_sleep = 30 if state == 'PUBLISHING' else 0
-    console.debug('State {}, extra sleep {}.', state, extra_sleep)
+    console.debug('State {0}, extra sleep {1}.', state, extra_sleep)
     wait_until_application_is_up(app)
     app = cache.get_full_application(app['id'])
     wait_until_application_accepts_ssh(app, vms)
@@ -291,3 +296,13 @@ def wait_for_application(app, vms):
     app = cache.get_full_application(app['id'])
     time.sleep(extra_sleep)
     return app
+
+
+def get_vm(application, vmname):
+    """Return the VM ``vmname`` from application ``application``."""
+    for vm in application.get('applicationLayer', {}).get('vm', []):
+        if vm.get('name') == vmname:
+            return vm
+
+def get_vms(application):
+    return application.get('applicationLayer', {}).get('vm', [])

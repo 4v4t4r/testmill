@@ -57,7 +57,7 @@ def load_manifest(filename=None):
     if filename is None:
         filename = manifest_name()
     if not manifest_exists(filename):
-        error.raise_error('Project manifest ({}) not found.', filename)
+        error.raise_error('Project manifest ({0}) not found.', filename)
     with file(filename) as fin:
         try:
             manifest = yaml.load(fin)
@@ -107,28 +107,28 @@ def add_defaults(manifest):
     name = manifest['project'].get('name')
     if name is None:
         _, name = os.path.split(directory)
-        console.info("Using '{}' as the project name.", name)
+        console.info("Using '{0}' as the project name.", name)
         manifest['project']['name'] = name
     language = manifest['project'].get('language')
     if language is None:
         language = detect_language(manifest, directory)
         if language:
-            console.info("Detected a {} project.", language)
+            console.info("Detected a {0} project.", language)
     manifest['project']['language'] = language
     if language and language not in manifest.get('languages', {}):
-        console.warning("Unknown language '{}' in manifest.", language)
+        console.warning("Unknown language '{0}' in manifest.", language)
     repo = manifest.setdefault('repository', {})
     typ = repo.get('type')
     if typ is None:
         typ = versioncontrol.detect_type(directory)
         if typ:
-            console.info('Detected a {} repository.', typ)
+            console.info('Detected a {0} repository.', typ)
     repo['type'] = typ
     url = repo.get('url')
     if url is None and typ:
         url = versioncontrol.get_origin(directory, typ)
         if url:
-            console.info("Using remote origin '{}'.", url)
+            console.info("Using remote origin '{0}'.", url)
     repo['url'] = url
     manifest.setdefault('defaults', {})
     manifest.setdefault('languages', {})
@@ -219,7 +219,7 @@ def check_manifest(manifest):
             validate.validate_node(manifest, path, check)
         except validate.ValidationError as e:
             path = validate.pathref(e[1])
-            error.raise_error('{}: {}: {}', manifest['_filename'], path, e[0])
+            error.raise_error('{0}: {1}: {2}', manifest['_filename'], path, e[0])
 
     check('/project', dict)
     check('/project/name', str)
@@ -266,13 +266,13 @@ def check_manifest_entities(manifest):
     """
     def blueprint_exists(name, nodepath):
         if not cache.get_blueprint(name=name):
-            msg = "Blueprint '{}' does not exist.".format(name)
+            msg = 'Blueprint `{0}` does not exist.'.format(name)
             raise validate.ValidationError(msg, nodepath)
         return True
 
     def image_exists(name, nodepath):
         if not cache.get_image(name=name):
-            msg = "Image '{}' does not exist.".format(name)
+            msg = 'Image `{0}` does not exist.'.format(name)
             raise validate.ValidationError(msg, nodepath)
         return True
 
@@ -284,7 +284,7 @@ def check_manifest_entities(manifest):
             validate.validate_node(manifest, path, check)
         except validate.ValidationError as e:
             path = validate.pathref(e[1])
-            error.raise_error('{}:{}: {}', manifest['_filename'], path, e[0])
+            error.raise_error('{0}:{1}: {2}', manifest['_filename'], path, e[0])
 
     check('/applications/*/blueprint', blueprint_exists)
     check('/applications/*/vms/*/image', image_exists)

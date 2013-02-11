@@ -210,7 +210,7 @@ def get_git_origin(repodir='.'):
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = git.communicate()
     if git.returncode != 0:
-        error.raise_error("Command 'git remote' exited with status {}.",
+        error.raise_error("Command 'git remote' exited with status {0}.",
                           git.returncode)
     for line in stdout.splitlines():
         line = line.strip()
@@ -227,9 +227,9 @@ def get_git_checkout_command(url, version):
     """
     commands = []
     commands.append('git init .')
-    commands.append('git remote add origin {}'.format(url))
+    commands.append('git remote add origin {0}'.format(url))
     commands.append('git fetch origin')
-    commands.append('git checkout {}'.format(version))
+    commands.append('git checkout {0}'.format(version))
     return commands
 
 
@@ -260,9 +260,9 @@ def walk_repository(repodir='.', repotype='auto'):
     if repotype == 'auto':
         repotype = detect_type(repodir)
         if repotype is None:
-            error.raise_error('Cannot detect repository type at {}.', repodir)
+            error.raise_error('Cannot detect repository type at {0}.', repodir)
     if repotype not in registry:
-        error.raise_error("Unknown repository type '{}'.", repodir)
+        error.raise_error("Unknown repository type '{0}'.", repodir)
     walk = registry[repotype][1]
     return walk(repodir)
 
@@ -272,9 +272,9 @@ def get_origin(repodir='.', repotype='auto'):
     if repotype is 'auto':
         typ = detect_type(repodir)
         if typ is None:
-            error.raise_error('Unknown repository type at {}.', repodir)
+            error.raise_error('Unknown repository type at {0}.', repodir)
     if repotype not in registry:
-        error.raise_error("Unknown repository type '{}'.", repotype)
+        error.raise_error("Unknown repository type '{0}'.", repotype)
     get_origin = registry[repotype][2]
     return get_origin(repodir)
 
@@ -282,7 +282,7 @@ def get_origin(repodir='.', repotype='auto'):
 def get_checkout_command(url, version, repotype):
     """Return the checkout command for a repository."""
     if repotype not in registry:
-        error.raise_error("Unknown repository type '{}'.", repodir)
+        error.raise_error("Unknown repository type '{0}'.", repodir)
     get_checkout_command = registry[repotype][3]
     return get_checkout_command(url, version)
 

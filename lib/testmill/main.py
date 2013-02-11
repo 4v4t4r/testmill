@@ -116,7 +116,7 @@ def parse_args(parser, argv=None):
         error.exit(error.EX_OK)
     subcmd = args.subcmd
     if subcmd not in subcommands:
-        console.error('Unknown command: {}', subcmd)
+        console.error("Unknown command: '{0}'.", subcmd)
         error.exit(error.EX_USAGE)
     add_args = subcommands[subcmd][1]
     add_args(parser)

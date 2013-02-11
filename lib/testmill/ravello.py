@@ -115,7 +115,7 @@ class RavelloClient(object):
             self._connect()
 
     def __repr__(self):
-        res = '<{}({!r})'.format(self.__class__.__name__, self.url)
+        res = '<{0}({1!r})'.format(self.__class__.__name__, self.url)
         if self._cookie:
             res += ', <AUTHENTICATED>'
         elif self.connection:
@@ -192,7 +192,7 @@ class RavelloClient(object):
             raise RavelloError(str(e))
         body = response.body
         ctype = response.getheader('Content-Type')
-        log.debug('API response: {}, {} bytes, ({})' \
+        log.debug('API response: {0}, {1} bytes, ({2})' \
                 .format(response.status, len(body), ctype))
         if response.status not in self.ok_codes:
             raise RavelloError('operation failed', response.status)
@@ -225,7 +225,7 @@ class RavelloClient(object):
         else:
             conn_class = httplib.HTTPSConnection
         connection = conn_class(self.host, self.port, timeout=self.timeout)
-        log.debug('connecting to {}:{}...'.format(self.host, self.port))
+        log.debug('connecting to {0}:{1}...'.format(self.host, self.port))
         connection.connect()
         log.debug('connected')
         self.connection = connection
@@ -285,6 +285,7 @@ class RavelloClient(object):
         # Also figure out the default project.
         if self._project is None:
             projects = self.get_projects()
+            projects = sorted(projects, key=lambda pr: int(pr['id']))
             self._project = projects[0]['id']
 
     def logout(self):

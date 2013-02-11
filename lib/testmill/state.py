@@ -27,10 +27,10 @@ def format_var(name, obj):
     if len(res) > 80 and not env.verbose:
         if isinstance(obj, list):
             noun = 'items' if len(obj) != 1 else 'item'
-            res = '[<{} {}>]'.format(len(obj), noun)
+            res = '[<{0} {1}>]'.format(len(obj), noun)
         elif isinstance(obj, dict):
             noun = 'items' if len(obj) != 1 else 'item'
-            res = '{{<{} {}>}}'.format(len(obj), noun)
+            res = '{{<{0} {1}>}}'.format(len(obj), noun)
         else:
             res = res[:60] + '...' + res[-1]
     return res
@@ -140,7 +140,7 @@ class _Environment(object):
         variables in the new scope."""
         for key in kwargs:
             if key.startswith('_'):
-                msg = "Cannot create dynamic binding for static var '{}'."
+                msg = "Cannot create dynamic binding for static var '{0}'."
                 raise RuntimeError(msg.format(key))
         return _Scope(self, kwargs)
 
@@ -168,22 +168,22 @@ class _Environment(object):
     def __repr__(self):
         clsname = self.__class__.__name__
         stack = self.__dict__['__stack']
-        header = '<{}(), <depth={}>'.format(clsname, len(stack))
+        header = '<{0}(), <depth={1}>'.format(clsname, len(stack))
         exc_stack = self.__dict__['__exc_stack']
         show_exc_stack = sys.exc_info() and exc_stack
         if show_exc_stack:
-            header += ', <exc_depth={}>'.format(len(exc_stack))
+            header += ', <exc_depth={0}>'.format(len(exc_stack))
         header += '>'
         lines = [header]
         lines.append('  Current Environment:')
         for name,value,depth in stack_vars(stack):
             if not name.startswith('_') or self.verbose:
-                lines.append('    {}[{}]: {}'.format(name, depth, value))
+                lines.append('    {0}[{1}]: {2}'.format(name, depth, value))
         if show_exc_stack:
             lines.append('  Exception Environment:')
             for name,value,depth in stack_vars(exc_stack):
                 if not name.startswith('_') or self.verbose:
-                    lines.append('    {}[{}]: {}'.format(name, depth, value))
+                    lines.append('    {0}[{1}]: {2}'.format(name, depth, value))
         lines.append('')
         res = '\n'.join(lines)
         return res

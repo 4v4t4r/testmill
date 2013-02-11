@@ -23,11 +23,12 @@ import fabric
 import fabric.api as fab
 
 from testmill import (login, cache, keypair, manifest, application,
-                      error, util, console)
+                      error, util, console, inflect)
 
 
 usage = textwrap.dedent("""\
         usage: ravtest [OPTION]... ssh <application> <vm> [<test_id>]
+               revtest ssh --help
         """)
 
 description = textwrap.dedent("""\
@@ -69,50 +70,81 @@ def add_args(parser):
     parser.usage = usage
     parser.description = description
     parser.add_argument('application')
-    parser.add_argument('vm', nargs='?')
-    parser.add_argument('test_id', nargs='?', default='last')
+    parser.add_argument('vm')
+    parser.add_argument('testid', nargs='?', default='last')
 
 
 def do_ssh(args, env):
     """The "ravello ssh" command."""
+
     with env.let(quiet=True):
         login.default_login()
         keypair.default_keypair()
-        manif = manifest.default_manifest()
 
-    appname = '{}:{}'.format(manif['project']['name'], args.application)
-    app = cache.get_application(name=appname)
-    if not app:
-        error.raise_error("Application '{}' not found.", appname)
-    app = cache.get_full_application(app['id'])
+    if manifest.manifest_exists():
+        with env.let(quiet=True):
+            manif = manifest.default_manifest()
+    else:
+        manif = None
+
+    parts = args.application.split(':')
+    if len(parts) in (1, 2) and manif is None:
+        error.raise_error('No manifest found ({0}).\n'
+                          'Please specify the fully qualified app name.\n'
+                          'Use `ravtest ps --all` for a list.',
+                          manifest.manifest_name())
+    if len(parts) in (1, 2):
+        project = manif['project']['name']
+        console.info('Project name is `{0}`.', project)
+        defname = parts[0]
+        instance = parts[1] if len(parts) == 2 else None
+    elif len(parts) == 3:
+        project, defname, instance = parts
+    else:
+        error.raise_error('Illegal application name: `{0}`.', appname)
+
+    apps = cache.get_applications(project, defname, instance)
+    if len(apps) == 0:
+        error.raise_error('No instances of application `{0}` exist.',
+                          defname)
+    elif len(apps) > 1:
+        error.raise_error('Multiple instances of `{0}` exist.\n'
+                          'Use `ravtest ps` to list the instances and then\n'
+                          'specify the application with its instance id.',
+                          defname)
+    app = cache.get_full_application(apps[0]['id'])
+    appname = app['name']
+    _, _, instance = appname.split(':')
 
     vmname = args.vm
-    vms = app['applicationLayer'].get('vm', [])
-    for vm in vms:
-        if vm['name'] == vmname:
-            break
-    else:
-        error.raise_error("Application '{}' has no VM '{}'.", appname, vmname)
+    vm = application.get_vm(app, vmname)
+    if vm is None:
+        error.raise_error('Application `{0}:{1}` has no VM named `{2}`.\n'
+                          'Use `ravtest ps --full` to see a list of VMs.',
+                          defname, instance, vmname)
+    console.info("Connecting to VM `{0}` of application `{1}:{2}`...",
+                 vmname, defname, instance)
 
     # Start up the application and wait for it if we need to.
 
     state = application.get_application_state(app)
     if state not in ('PUBLISHING', 'STARTING', 'STOPPED', 'STARTED'):
-        error.raise_error("VM '{}' is in an unknown state.", vmname)
+        error.raise_error("VM `{0}` is in an unknown state.", vmname)
 
     userdata = vm.get('customVmConfigurationData', {})
     vmkey = userdata.get('keypair', {})
 
     if vmkey.get('id') != env.public_key['id']:
-        error.raise_error("Unknown public key '{}'.", vmkey.get('name'))
+        error.raise_error("VM uses unknown public key `{0}`.",
+                          vmkey.get('name'))
 
     application.start_application(app)
     application.wait_for_application(app, [vmname])
 
     # Now run ssh. Prefer openssh but fall back to using Fabric/Paramiko.
 
-    host = 'ravello@{}'.format(vm['dynamicMetadata']['externalIp'])
-    command = '~/bin/run {}'.format(args.test_id)
+    host = 'ravello@{0}'.format(vm['dynamicMetadata']['externalIp'])
+    command = '~/bin/run {0}'.format(args.testid)
 
     openssh = util.find_openssh()
     interactive = os.isatty(sys.stdin.fileno())
@@ -125,7 +157,7 @@ def do_ssh(args, env):
                     '-o', 'StrictHostKeyChecking=no',
                     '-o', 'LogLevel=quiet',
                     '-t',  host, command]
-            console.debug('Starting {}', ' '.join(argv))
+            console.debug('Starting {0}', ' '.join(argv))
             os.execve(openssh, argv, os.environ)
         else:
             # Windows has execve() but for some reason it does not work
