@@ -355,12 +355,12 @@ class RavelloClient(object):
     def get_images(self):
         """Return a list of all images."""
         images = []
-        response = self._make_request('GET', '/images/public')
-        for image in response.entity.get('imageMetadata', []):
-            images.append(dict(image, public=True))
         response = self._make_request('GET', '/images/private')
         for image in response.entity.get('imageMetadata', []):
             images.append(dict(image, public=False))
+        response = self._make_request('GET', '/images/public')
+        for image in response.entity.get('imageMetadata', []):
+            images.append(dict(image, public=True))
         return images
 
     # Applications

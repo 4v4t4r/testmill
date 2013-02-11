@@ -23,11 +23,8 @@ def get_images():
         images = env.api.get_images()
         # XXX: strip "TestMill:" prefix. Change this when we get
         # a hierarchical library structure.
-        def testmill_first(img):
-            return not img['name'].lower().startswith('testmill')
-        images = sorted(images, key=testmill_first)
         for image in images:
-            if image['name'].lower().startswith('testmill:'):
+            if image['name'].startswith('TestMill:'):
                 image['name'] = image['name'][9:]
         env._images = images
     return env._images
