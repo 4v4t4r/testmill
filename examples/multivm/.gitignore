@@ -3,5 +3,5 @@ venv*
 *.pyc
 pyramid.log
 pyramid.pid
-.ravello
+.ravello/
 .coverage

@@ -10,7 +10,7 @@ applications:
         execute:
         -   nosetests
 
--   name: production
+-   name: acceptance
     vms:
     -   name: db
         image: fedora17
