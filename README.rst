@@ -1,10 +1,17 @@
+****************
 Ravello TestMill
-----------------
+****************
 
-Ravello TestMill allows you to run system tests on a range of different
-operating systems using the Ravello Cloud Application Hypervisor.
+TestMill is an orchestration tool to build single- and multi-VM application
+environments on the fly from a textual description and run workflows in them.
+The focus is on providing clean and high-fidelity environments for running any
+kind of development and test workloads, including per-developer development
+environments, unit tests, system tests, integration tests, functional tests and
+usability tests.
 
-`See the wiki on Github for the documentation <https://github.com/ravello/testmill/wiki>`_.
+See the `TestMill Manual`_ for more information.
 
 Copyright (c) 2012-2013 Ravello Systems, Inc.  Available as Open Source
 Software under the Apache 2.0 license.
+
+.. _`TestMill Manual`: https://testmill.readthedocs.org/en/latest/
