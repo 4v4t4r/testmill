@@ -57,13 +57,13 @@ appetite. Much more information is given in the sections :ref:`concepts` and
 The job of TestMill is to build applications and run workflows in them. When we
 say application in the context of Ravello, we mean something very specific. In
 Ravello, an application is a completely isolated set of virtual machines,
-networks and storage that runs together as a unit somehwere in the cloud and
+networks and storage that runs together as a unit somewhere in the cloud and
 implements one or more services (typically network-accessible). One example of
 an application that would be very suited to run in Ravello would be a 3-tier
 web-based application with a load balancer, application tier, and database
 tier.
 
-In TestMill, Ravello appliations are described using a textual format called
+In TestMill, Ravello applications are described using a textual format called
 the *manifest*. By convention, the manifest is stored in a file called
 ``.ravello.yml`` in the root directory of a source code repository. The
 manifest is version controlled together with the rest of the code, and defines
@@ -122,7 +122,7 @@ using the Pyramid framework. You will see that there is a file called
 
 As you see, the file is in YAML format. The manifest defines two applications:
 ``unittest`` and ``acceptance``. The former consists of one virtual machine
-only, based on Fedora 17. The latter conists of two virtual machines, one
+only, based on Fedora 17. The latter consists of two virtual machines, one
 database server and one web server. The manifest also defines the workflow for
 each application. This is done using the ``sysinit:``, ``prepare:`` and
 ``execute:`` keys.

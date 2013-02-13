@@ -25,11 +25,9 @@ Contents
    :maxdepth: 1
 
    introduction
-   installation
-   concepts
    manifest
    commands
-   reference
+   appendices
    changelog
 
 
