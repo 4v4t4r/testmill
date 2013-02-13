@@ -1,12 +1,12 @@
 Welcome to Ravello TestMill
 ===========================
 
-TestMill is an orchestration tool to build single- and multi-VM application
-environments on the fly from a textual description and run workflows in them.
-The focus is on providing clean and high-fidelity environments for running any
-kind of development and test workloads, including per-developer development
-environments, unit tests, system tests, integration tests, functional tests and
-usability tests.
+Ravello TestMill is an orchestration tool to build single- and multi-VM
+application environments on the fly from a textual description and run
+workflows in them. The focus is on providing clean and high-fidelity
+environments for running any kind of development and test workloads, including
+per-developer development environments, unit tests, system tests, integration
+tests, functional tests and usability tests.
 
 TestMill uses the `Ravello`_ `Cloud Application Hypervisor`_ as the
 virtualization engine to reproduce almost any legacy or new-app environment in
