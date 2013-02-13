@@ -1,6 +1,0 @@
-include README.rst LICENSE setup.py setup.cfg requirements.txt
-recursive-include lib *.py *.yml
-recursive-exclude lib *.egg-info/*.py
-recursive-include images *.tdl *.auto Makefile findauto.py
-recursive-include examples *
-recursive-exclude examples dist/* target/* src/*
