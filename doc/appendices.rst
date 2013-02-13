@@ -130,8 +130,8 @@ Paramiko).
 
    This step will likely give an error that a file called ``yaml.h`` is not
    found. It is safe to ignore this error.
-.. _standard-images:
 
+.. _standard-images:
 
 Standard Images
 ===============

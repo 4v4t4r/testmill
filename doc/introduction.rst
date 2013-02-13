@@ -51,8 +51,7 @@ Running your first Application
 
 Once you've installed TestMill and registered for Ravello, you can start
 exploring it. In this section we will give you a small example to wet your
-appetite. Much more information is given in the sections :ref:`concepts` and
-:ref:`reference`.
+appetite. 
 
 The job of TestMill is to build applications and run workflows in them. When we
 say application in the context of Ravello, we mean something very specific. In
