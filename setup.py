@@ -18,7 +18,7 @@ __version__ = '0.9.5.dev'
 
 
 version_info = {
-    'name': 'ravello-testmill',
+    'name': 'testmill',
     'version': __version__,
     'description': 'Create multi-VM application environments for dev/test.',
     'author': 'Geert Jansen',

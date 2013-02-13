@@ -38,7 +38,7 @@ your Python version, issue the command ``python -V`` on the command line.
 
 2. Install TestMill from the Python Package Index::
 
-    $ sudo easy_install ravello-testmill
+    $ sudo easy_install testmill
 
 
 .. _mac-installation:
@@ -63,7 +63,7 @@ to compile it yourself. This requires a C compiler.
    You can now install Ravello TestMill directly from the Python Package Index.
    Open up a terminal and issue::
 
-    $ sudo easy_install ravello-testmill
+    $ sudo easy_install testmill
 
    This step will likely give an error that a file called ``yaml.h`` is not
    found. It is safe to ignore this error.
@@ -126,7 +126,7 @@ Paramiko).
    Index We can now install from the Python package index. Open a command
    prompt and issue::
 
-    $ easy_install ravello-testmill
+    $ easy_install testmill
 
    This step will likely give an error that a file called ``yaml.h`` is not
    found. It is safe to ignore this error.

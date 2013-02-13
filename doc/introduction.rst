@@ -20,7 +20,7 @@ The simplest way to install is to install directly from the Python Package
 Index. On Unix-like systems, this means opening a command prompt and issuing
 the following command::
 
- $ sudo easy_install ravello-testmill
+ $ sudo easy_install testmill
 
 One caveat is the PyCrypto dependency. PyCrypto contains a few modules written
 in the C programming language. In general it is recommended to use the PyCrypto
