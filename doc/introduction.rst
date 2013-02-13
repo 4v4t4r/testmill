@@ -83,6 +83,7 @@ using the Pyramid framework. You will see that there is a file called
 ``.ravello.yml`` in that directory. Its contents are:
 
 .. code-block:: yaml
+    :linenos:
 
     language: nodefaults
     applications:
