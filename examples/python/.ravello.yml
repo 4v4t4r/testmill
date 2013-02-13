@@ -5,6 +5,6 @@ applications:
 -   name: platformtest
     vms:
     - name: ubuntu1204
-    - name: centos6
-    - name: fedora16
+    - name: ubuntu1210
     - name: fedora17
+    - name: fedora18
