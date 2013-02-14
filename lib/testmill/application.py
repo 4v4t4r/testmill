@@ -19,9 +19,9 @@ import time
 import socket
 import select
 import errno
-import functools
 import textwrap
 import copy
+from functools import reduce
 
 from testmill import (cache, console, keypair, util, ravello, error,
                       manifest, inflect)
@@ -64,9 +64,12 @@ def get_application_state(app):
     The state is obtained by reducing the states of all the application VMs
     using ``combine_states()``.
     """
-    vms = app['applicationLayer'].get('vm', [''])
-    state = functools.reduce(combine_states,
-                (vm['dynamicMetadata']['state'] for vm in vms))
+    vms = app['applicationLayer'].get('vm', [])
+    if not vms:
+        return 'DRAFT'
+    states = map(lambda vm: vm['dynamicMetadata']['state'] \
+                        if vm.get('dynamicMetadata') else 'DRAFT', vms)
+    state = reduce(combine_states, states)
     return state
 
 
