@@ -14,8 +14,8 @@
 
 from setuptools import setup
 
-__version__ = '0.9.5'
 
+__version__ = '0.9.6.dev'
 
 version_info = {
     'name': 'testmill',
