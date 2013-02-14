@@ -6,7 +6,7 @@ trash/
 venv*/
 .coverage
 scratch/
-MANIFEST
+MANIFEST.in
 lib/testmill/_version.py
 doc/_build/
 images/*.xml

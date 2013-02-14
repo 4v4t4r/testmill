@@ -19,7 +19,7 @@ import tempfile
 import textwrap
 import subprocess
 
-from setuptools import setup, Command
+from setuptools import setup
 
 
 version_info = {
@@ -69,25 +69,37 @@ def update_version():
 
 
 def update_manifest():
-    """Update the MANIFEST file from git, if necessary."""
+    """Update the MANIFEST.in file from git, if necessary."""
+    # It would be more efficient to create MANIFEST directly, rather
+    # than creating a MANIFEST.in where every line just includes one file.
+    # Unfortunately, setuptools/distribute do not support this (distutils
+    # does).
     cmd = subprocess.Popen(['git', 'ls-tree', '-r', 'master', '--name-only'],
                            stdout=subprocess.PIPE)
     stdout, _ = cmd.communicate()
-    lines = ['/{0}\n'.format(line)for line in stdout.splitlines()]
-    lines.append('/lib/testmill/_version.py\n')
+    files = stdout.splitlines()
+    files.append('lib/testmill/_version.py')
+    lines = ['include {0}\n'.format(fname)for fname in files]
     new = ''.join(sorted(lines))
     try:
-        with file('MANIFEST', 'r') as fin:
+        with file('MANIFEST.in', 'r') as fin:
             current = fin.read()
     except IOError:
         current = None
     if new == current:
         return
-    tmpname = 'MANIFEST.{0}-tmp'.format(os.getpid())
+    tmpname = 'MANIFEST.in.{0}-tmp'.format(os.getpid())
     with file(tmpname, 'w') as fout:
         fout.write(new)
-    os.rename(tmpname, 'MANIFEST')
-    print('Updated MANIFEST')
+    os.rename(tmpname, 'MANIFEST.in')
+    print('Updated MANIFEST.in')
+    # Remove the SOURCES.txt that setuptools maintains. It appears not to
+    # accurately regenerate it when MANIFEST.in changes.
+    sourcestxt = os.path.join('lib', 'testmill.egg-info', 'SOURCES.txt')
+    if not os.access(sourcestxt, os.R_OK):
+        return
+    os.unlink(sourcestxt)
+    print('Removed {0}'.format(sourcestxt))
 
 
 if __name__ == '__main__':
