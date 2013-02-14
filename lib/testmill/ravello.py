@@ -195,7 +195,14 @@ class RavelloClient(object):
         log.debug('API response: {0}, {1} bytes, ({2})' \
                 .format(response.status, len(body), ctype))
         if response.status not in self.ok_codes:
-            raise RavelloError('operation failed', response.status)
+            error = response.getheader('error-code')
+            message = response.getheader('error-message', '')
+            if error:
+                log.debug('API detail: {0}: {1}'.format(error, message))
+            if not message:
+                message = 'API call failed with {0} {1}'\
+                                .format(response.status, response.reason)
+            raise RavelloError(message)
         if ctype == 'application/json':
             try:
                 parsed = json.loads(body)
