@@ -23,7 +23,7 @@ from testmill.state import env
 
 
 usage = textwrap.dedent("""\
-        usage: ravtest [OPTION]... run [-i] [-c] [--new] [-V <vmlist>]
+        usage: ravtest [OPTION]... run [-i] [-c] [--new] [--vms <vmlist>]
                        <application> [<command>]
                ravtest run --help
         """)
@@ -48,7 +48,7 @@ description = textwrap.dedent("""\
                 Continue running even after an error.
             --new
                 Never re-use existing applications.
-            -V <vms>, --vms <vmlist>
+            --vms <vmlist>
                 Execute tasks only on these virtual machines, instead of on
                 all virtual machines in the application. <vmlist> is a
                 comma-separated list of VMs.
@@ -62,7 +62,7 @@ def add_args(parser):
     parser.add_argument('-c', '--continue', action='store_true',
                         dest='continue_')
     parser.add_argument('--new', action='store_true')
-    parser.add_argument('-V', '--vms')
+    parser.add_argument('--vms')
     parser.add_argument('application')
     parser.add_argument('command', nargs='?')
 

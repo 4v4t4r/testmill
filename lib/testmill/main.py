@@ -19,7 +19,7 @@ import logging
 import textwrap
 import traceback
 
-from testmill import argparse, console, ravello, error
+from testmill import argparse, console, ravello, error, _version
 from testmill.state import env
 
 
@@ -27,6 +27,7 @@ usage = textwrap.dedent("""\
     Usage: ravtest [-u <user>] [-p <password>] [-s <service_url>]
                    [-q] [-v] [-d] [-y] [-h] <command> [OPTION]...
            ravtest --help [<command>]
+           ravtest --version
 """)
 
 description = textwrap.dedent("""\
@@ -48,8 +49,10 @@ description = textwrap.dedent("""\
         -y, --yes
             Do not ask for confirmation
         -h, --help
-            Show help
-        
+            Show help and exit
+        -V, --version
+            Show version and exit
+
     The available commands are:
         login       log in to Ravello
         logout      log out from Ravello
@@ -96,6 +99,7 @@ def create_parser():
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-y', '--yes', action='store_true')
     parser.add_argument('-h', '--help', action='store_true')
+    parser.add_argument('-V', '--version', action='store_true')
     parser.add_argument('subcmd')
     return parser
 
@@ -114,12 +118,15 @@ def parse_args(parser, argv=None):
         args = parser.parse_args(argv)
     except argparse.ParseError as e:
         args = e.namespace
-        if not args.help and not args.subcmd:
+        if not (args.help or args.version) and not args.subcmd:
             console.write_err(parser.format_usage())
             console.error(str(e))
             error.exit(error.EX_USAGE)
     if args.help and not args.subcmd:
         console.write_err(parser.format_help())
+        error.exit(error.EX_OK)
+    if args.version and not args.subcmd:
+        console.writeln_err(_version.version_string)
         error.exit(error.EX_OK)
     subcmd = args.subcmd
     if subcmd not in subcommands:

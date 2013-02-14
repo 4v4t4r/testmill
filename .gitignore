@@ -7,3 +7,4 @@ venv*/
 .coverage
 scratch/
 MANIFEST
+lib/testmill/_version.py
