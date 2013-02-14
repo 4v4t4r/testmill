@@ -8,3 +8,7 @@ venv*/
 scratch/
 MANIFEST
 lib/testmill/_version.py
+doc/_build/
+images/*.xml
+images/*.tdl
+images/*.auto

@@ -1,3 +1,0 @@
-include setup.py
-include requirements.txt
-recursive-include lib *.py
