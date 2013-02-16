@@ -3,6 +3,4 @@ define(HOSTNAME, `fedora'VERSION)dnl
 define(ROOTPW, ravelloCloud)dnl
 define(FSTYPE, ext4)dnl
 define(PY_VERSION, 2.7)dnl
-ifelse(VERSION, 17,
-    define(PY3_VERSION, 3.2),
-    define(PY3_VERSION, 3.3))dnl
+define(PY3_VERSION, ifelse(VERSION, 17, 3.2, 3.3))dnl
