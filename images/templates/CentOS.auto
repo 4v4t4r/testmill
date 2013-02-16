@@ -22,20 +22,14 @@ gzip
 bzip2
 xz
 mlocate
-cloud-init
 bzr
 python-devel
 python-setuptools
-python-pip
 python-nose
 ruby-devel
 rubygems
 rubygem-rake
-rubygem-bundler
-rubygem-rspec
 java-1.7.0-openjdk-devel
-maven
-apache-ivy
 mysql-server
 postgresql-server
 %end
@@ -67,7 +61,12 @@ EOM
 yum --enablerepo=epel -y install epel-release
 rm -f /etc/yum.repos.d/epel-bootstrap.repo
 
-yum -y install cloud-init
+# These are not on the first install DVD
+yum -y install cloud-init python-pip python-virtualenv rubygem-rspec \
+    maven apache-ivy rubygem-bundler
+
+# Now update everything else
+yum -y update
 
 # Lock user root. Create user ravello (pw: 'ravelloCloud')
 # that has full sudo access. And disable ssh password auth.

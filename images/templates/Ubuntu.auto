@@ -28,8 +28,8 @@ d-i     pkgsel/include/install-recommends       boolean true
 d-i     pkgsel/include  string openssh-server python-software-properties \
     gcc make autoconf automake libtool gdb pkg-config git mercurial \
     bzr subversion python-dev python-setuptools python-pip python-nose \
-    python3-dev python3-setuptools python3-nose ruby-dev rake rubygems \
-    ruby-bundler ruby-rspec openjdk-7-jdk maven2 ivy leiningen
+    python-virtualenv python3-dev python3-setuptools python3-nose ruby-dev \
+    rake rubygems ruby-bundler ruby-rspec openjdk-7-jdk maven2 ivy leiningen
 
 d-i grub-installer/only_debian boolean true
 d-i grub-installer/with_other_os boolean true
@@ -65,11 +65,15 @@ ifelse(PATCH_CLOUDINIT, 1,
         /usr/share/pyshared/cloudinit/distros/ubuntu.py; \
 ')dnl
 ifelse(HAVE_PIP3, 1,
-`    in-target ln -s pip-PY3_VERSION /usr/bin/pip3'; \
-,`    in-target easy_install3 pip==1.2.1; \
+`   in-target apt-get install python3-pip; \
+    in-target ln -s pip-PY3_VERSION /usr/bin/pip3; \
+',` in-target easy_install3 pip; \
     in-target ln -s pip-PY3_VERSION /usr/local/bin/pip3; \
     in-target rm -f /usr/local/bin/pip; \
 ')dnl
+    in-target easy_install3 virtualenv; \
+    in-target rm -f /usr/local/bin/virtualenv; \
+    in-target ln -s virtualenv-PY3_VERSION /usr/local/bin/virtualenv3; \
     in-target sh -c 'echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64; \
             export JAVA_HOME" > /etc/profile.d/java.sh'; \
     in-target chmod 644 /etc/profile.d/java.sh; \

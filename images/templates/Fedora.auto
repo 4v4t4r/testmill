@@ -22,15 +22,18 @@ gzip
 bzip2
 xz
 mlocate
+at
 cloud-init
+mercurial
 bzr
 python-devel
 python-setuptools
 python-pip
 python-nose
+python-virtualenv
 python3-devel
 python3-setuptools
-ifelse(VERSION, 16,`dnl', python3-pip)
+python3-pip
 python3-nose
 ruby-devel
 rubygems
@@ -51,11 +54,6 @@ parted -s /dev/vda -- mkpart primary FSTYPE 2048s -4194305s
 parted -s /dev/vda -- mkpart primary linux-swap -4194304s -1s
 parted -s /dev/vda -- set 1 boot on
 partprobe /dev/vda
-%end
-
-%post --nochroot
-# Make name resolution work for post-install, needed for Fedora-16
-cp /etc/resolv.conf /mnt/sysimage/etc
 %end
 
 %post
@@ -97,18 +95,28 @@ sed -i -e "s/ec2-user/ravello/" \
 sed -i -e "/\[Unit\]/ a Before=sshd.service" \
         /lib/systemd/system/cloud-init.service
 
+# The Grub2 graphical console is messed up.
+sed -i -e "s/terminal_output gfxterm/terminal_output console/" \
+        /boot/grub2/grub.cfg
+
 # Make sure we have a basic Python environment that is identical over
-# the different images. We provide a "pip", "pip3", "easy_install"
-# and "easy_install3".
+# the different images. We provide "pip", "easy_install" and "virtualenv"
+# commands, and their Python 3 versions "pip3", "easy_install3" and
+# "virtualenv3".
 ln -s pip-python /usr/bin/pip
-ifelse(HAVE_PIP3, 0,
-`easy_install-PY3_VERSION pip==1.2.1
-ln -s pip-PY3_VERSION /usr/bin/pip3',
-`ln -s pip-python3 /usr/bin/pip3')
+ln -s pip-python3 /usr/bin/pip3
 ln -s easy_install-PY3_VERSION /usr/bin/easy_install3
+ln -s nosetests-PY3_VERSION /usr/bin/nosetests3
+pip3 install virtualenv
+rm -f /usr/bin/virtualenv
+ln -s virtualenv-PY_VERSION /usr/bin/virtualenv
+ln -s virtualenv-PY3_VERSION /usr/bin/virtualenv3
 
 # Clojure. Just install Leiningen. When it is first run, it will drag in
 # everything else.
 curl https://raw.github.com/technomancy/leiningen/preview/bin/lein -o /usr/bin/lein
 chmod 755 /usr/bin/lein
+
+# As a courtesy to the user..
+updatedb
 %end
