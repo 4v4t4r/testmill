@@ -20,7 +20,7 @@ from testmill.state import _Environment
 from testmill.test import *
 
 
-class TestState(TestSuite):
+class TestState(UnitTestSuite):
 
     def test_set(self):
         env = _Environment()
@@ -33,6 +33,19 @@ class TestState(TestSuite):
         env2.foo = 10
         env.update(env2)
         assert env.foo == 10
+
+    def test_let(self):
+        env = _Environment()
+        with env.let(foo=10):
+            assert env.foo == 10
+
+    def test_new(self):
+        env = _Environment()
+        env.foo = 10
+        with env.new():
+            assert not hasattr(env, 'foo')
+        with env.new(foo=20):
+            assert env.foo == 20
 
     def test_scoping_rules(self):
         env = _Environment()

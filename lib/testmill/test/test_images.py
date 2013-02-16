@@ -15,27 +15,17 @@
 from __future__ import absolute_import, print_function
 
 import os
-
 from testmill.main import main
-from testmill.state import env
 from testmill.test import *
 
 
-class TestRun(SystemTestSuite):
-    """Test the "ravtest run" command."""
+class TestImages(SystemTestSuite):
+    """Run some basic test on the standard images."""
 
-    def test_run(self):
+    def test_images(self):
         os.chdir(testenv.testdir)
         args = get_common_args()
-        args += ['run', '-m', 'platformtest.yml', 
-                 'platformtest', 'true']
-        status = main(args)
-        assert status == 0
-
-    def test_run_failed(self):
-        os.chdir(testenv.testdir)
-        args = get_common_args()
-        args += ['run', '-m', 'platformtest.yml', 
-                 'platformtest', 'false']
-        status = main(args)
-        assert status != 0
+        args += ['run', '-m', 'platformtest.yml',
+                 'platformtest', 'sh check_image.sh']
+        retval = main(args)
+        assert retval == 0

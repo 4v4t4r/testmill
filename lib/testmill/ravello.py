@@ -459,7 +459,8 @@ class RavelloClient(object):
                 break
         url = '/instance/{0}/blueprint/{1}/{2}' \
                     .format(application['id'], name, offline)
-        self._make_request('POST', url)
+        response = self._make_request('POST', url)
+        return response.entity
 
     def remove_blueprint(self, blueprint):
         """Remove a blueprint."""

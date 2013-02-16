@@ -40,7 +40,7 @@ description = textwrap.dedent("""\
                 that the referenced entities exist.
             --dump
                 Dump the manifest after it has been validated.
-        """.format(manifest_name=manifest.manifest_name()))
+        """.format(manifest_name=manifest.default_manifest_name()))
 
 
 def add_args(parser):

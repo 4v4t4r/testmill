@@ -92,17 +92,15 @@ def do_ps(args, env):
         cloud = app.get('cloud')
         region = app.get('regionName')
         started = app.get('totalStartedVms')
-        start_time = app.get('publishStartTime')
-        if started and start_time:
-            now = time.time()
-            start_time = util.format_timedelta(now - start_time/1000)
-        else:
-            start_time = ''
+        publish_time = app.get('publishStartTime')
         creation_time = app.get('creationTime')
-        if creation_time:
-            stt = time.localtime(creation_time/1000)
-            creation_time = time.strftime('%Y-%m-%d %H:%M:%S', stt)
-
+        created = publish_time or creation_time
+        if created:
+            now = time.time()
+            created = util.format_timedelta(now - created/1000)
+            created = '{0} ago'.format(created)
+        else:
+            created = ''
         if args.full and not args.blueprint:
             vms = [ vm['name'] for vm in application.get_vms(app) ]
             vms = '`{0}`'.format('`, `'.join(vms))
@@ -118,10 +116,10 @@ def do_ps(args, env):
             console.writeln('    {0} {1} running', started, what2)
         if cloud is not None:
             console.writeln('    published to {0}/{1}', cloud, region)
-        if start_time:
-            console.writeln('    up for: {0}', start_time)
-        elif creation_time:
-            console.writeln('    created: {0}', creation_time)
+        if created:
+            console.writeln('    created: {0}', created)
         if args.full and not args.blueprint:
             console.writeln('    VMs: {0}', vms)
         console.writeln()
+
+    return error.EX_OK

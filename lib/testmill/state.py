@@ -88,14 +88,16 @@ class _Swapper(object):
         self._new = new
 
     def __enter__(self):
-        tmp = self._cur.__dict__
-        self._cur.__dict__ = self._new.__dict__
-        self._new.__dict__ = tmp
+        for key in ('__stack', '__exc_ref', '__exc_stack'):
+            tmp = self._cur.__dict__[key]
+            self._cur.__dict__[key] = self._new.__dict__[key]
+            self._new.__dict__[key] = tmp
 
     def __exit__(self, *exc_info):
-        tmp = self._cur.__dict__
-        self._cur.__dict__ = self._new.__dict__
-        self._new.__dict__ = tmp
+        for key in ('__stack', '__exc_ref', '__exc_stack'):
+            tmp = self._cur.__dict__[key]
+            self._cur.__dict__[key] = self._new.__dict__[key]
+            self._new.__dict__[key] = tmp
 
 
 class _Environment(object):
@@ -155,14 +157,6 @@ class _Environment(object):
         """Return a context manager that temporarily swaps the environment
         with a clean new environment. Useful for testing."""
         new = type(self)(**kwargs)
-        return _Swapper(self, new)
-
-    def copy(self, **kwargs):
-        """Create a copy of an environment. Useful for testing."""
-        new = type(self)()
-        new.update(self)
-        for key in kwargs:
-            setattr(new, key, kwargs[key])
         return _Swapper(self, new)
 
     def __repr__(self):

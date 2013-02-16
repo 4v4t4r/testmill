@@ -39,9 +39,16 @@ def merge(source, dest, only_key=None):
             merge(value, dest[key])
 
 
-def manifest_name():
+def default_manifest_name():
     """Return the default manifest name."""
     return '.ravello.yml'
+
+
+def manifest_name():
+    """Return the actual manifest name."""
+    if env.manifest:
+        return env.manifest
+    return default_manifest_name()
 
 
 def manifest_exists(filename=None):
@@ -295,9 +302,12 @@ def check_manifest_entities(manifest):
 
 def default_manifest(required=True):
     """The default process of bootstrapping and checking the manifest."""
-    if not manifest_exists() and not required:
-        return
-    manifest = load_manifest()
+    filename = env.manifest
+    if not filename:
+        filename = default_manifest_name()
+        if not manifest_exists(filename) and not required:
+            return
+    manifest = load_manifest(filename)
     check_manifest(manifest)
     add_defaults(manifest)
     percolate_defaults(manifest)

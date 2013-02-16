@@ -24,7 +24,7 @@ from testmill.state import env
 
 usage = textwrap.dedent("""\
         usage: ravtest [OPTION]... run [-i] [-c] [--new] [--vms <vmlist>]
-                       <application> [<command>]
+                       [--dry-run] <application> [<command>]
                ravtest run --help
         """)
 
@@ -52,6 +52,9 @@ description = textwrap.dedent("""\
                 Execute tasks only on these virtual machines, instead of on
                 all virtual machines in the application. <vmlist> is a
                 comma-separated list of VMs.
+            --dry-run
+                Do not execute any tasks. Useful for starting up an
+                application without doing anything yet.
         """)
 
 
@@ -63,6 +66,7 @@ def add_args(parser):
                         dest='continue_')
     parser.add_argument('--new', action='store_true')
     parser.add_argument('--vms')
+    parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('application')
     parser.add_argument('command', nargs='?')
 
@@ -91,12 +95,17 @@ def do_run(args, env):
     if not vms:
         error.raise_error('No virtual machines in application.')
 
-    if args.command:
-        for vm in appdef['vms']:
-            vm['tasks'] = [{'name': 'execute', 'commands': [args.command]}]
-
     app = application.create_or_reuse_application(appdef, args.new)
     app = application.wait_for_application(app, vms)
+
+    if args.command:
+        for vm in appdef['vms']:
+            for task in vm['tasks']:
+                if task['name'] == 'execute':
+                    task['commands'] = [args.command]
+    elif args.dry_run:
+        for vm in appdef['vms']:
+            vm['tasks'] = []
 
     ret = tasks.run_all_tasks(app, vms)
 

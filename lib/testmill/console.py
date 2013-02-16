@@ -33,8 +33,8 @@ def confirm(message):
     message = '{0} (y/n): '.format(message)
     result = prompt(message)
     while result not in ('y', 'n'):
-        console.info("Please enter 'y' or 'n'.")
-        result = console.prompt(message)
+        info("Please enter 'y' or 'n'.")
+        result = prompt(message)
     return result == 'y'
 
 def getpass(prompt):

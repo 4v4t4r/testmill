@@ -22,28 +22,32 @@ import textwrap
 import mock
 
 from testmill.test import *
+from testmill.test.fileops import *
 from testmill import versioncontrol
 
 
-class TestVersionControl(TestSuite):
+class TestVersionControl(UnitTestSuite):
     """Test suite for the testmill.versioncontrol module."""
 
     # walk_repository()
 
-    repository = {
-        'dir1': {
-            'sub1': { 'foo': '', 'bar': '' },
-            'sub2': { 'baz': '' }
-        },
-        'dir2': {
-            'sub2': { 'foo': '', 'qux': '' },
-            'sub3': { 'quux': '' }
-        }
-    }
+    def create_repo(self):
+        with mkdir('dir1'):
+            with mkdir('sub1'):
+                touch('foo')
+                touch('bar')
+            with mkdir('sub2'):
+                touch('baz')
+        with mkdir('dir2'):
+            with mkdir('sub2'):
+                touch('foo')
+                touch('qux')
+            with mkdir('sub3'):
+                touch('quux')
 
     def test_walk_repository(self):
-        tmpdir = self.tempdir(self.repository)
-        gen = versioncontrol.walk_repository(tmpdir, repotype=None)
+        self.create_repo()
+        gen = versioncontrol.walk_repository('.', repotype=None)
         elems = list(gen)
         assert len(elems) == 12
         join = os.path.join
@@ -64,7 +68,7 @@ class TestVersionControl(TestSuite):
 
     # parse_gitignore()
 
-    gitignore = textwrap.dedent("""\
+    gitignore = text("""\
             foo
             foo*
             foo/bar
@@ -89,8 +93,8 @@ class TestVersionControl(TestSuite):
             assert isinstance(parsed[i][1], int)
 
     def test_parse_gitignore_stream(self):
-        tmpfile = self.tempfile(self.gitignore)
-        with file(tmpfile) as fin:
+        touch('.gitignore', self.gitignore)
+        with file('.gitignore') as fin:
             parsed = versioncontrol.parse_gitignore(fin)
         assert len(parsed) == 9
 
@@ -151,24 +155,23 @@ class TestVersionControl(TestSuite):
 
     # walk_repository(type='git')
 
-    gitignore_root = textwrap.dedent("""\
+    def create_git_repo(self):
+        self.create_repo()
+        mkfile('.gitignore', text("""\
             foo
             sub2/
             sub3
             bar/
             dir2/*/baz
-            """)
-
-    gitignore_dir2 = textwrap.dedent("""\
-            !sub2
-            """)
+            """))
+        with chdir('dir2'):
+            mkfile('.gitignore', text("""\
+                    !sub2
+                    """))
 
     def test_walk_git_repository(self):
-        git_tree = copy.deepcopy(self.repository)
-        git_tree['.gitignore'] = self.gitignore_root
-        git_tree['dir2']['.gitignore'] = self.gitignore_dir2
-        tmpdir = self.tempdir(git_tree)
-        gen = versioncontrol.walk_repository(tmpdir, repotype='git')
+        self.create_git_repo()
+        gen = versioncontrol.walk_repository('.', repotype='git')
         elems = list(gen)
         assert len(elems) == 8
         join = os.path.join

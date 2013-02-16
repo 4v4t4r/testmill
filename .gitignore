@@ -12,3 +12,4 @@ doc/_build/
 images/*.xml
 images/*.tdl
 images/*.auto
+.ravello/

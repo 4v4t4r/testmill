@@ -280,7 +280,11 @@ def create_script(taskname, commands):
         escaped = util.shell_escape(str(value))
         lines.append(tmpl.format(key, escaped))
     shell_vars = '\n'.join(lines)
-    shell_commands = '\n'.join(commands)
+    if env.args.continue_:
+        tmpl = '{0}\n'
+    else:
+        tmpl = '{0}\ntest "$?" -ne "0" && exit 1\n'
+    shell_commands = '\n'.join([tmpl.format(cmd) for cmd in commands])
     script = script.format(warn_only=warn_only, shell_vars=shell_vars,
                            shell_commands=shell_commands)
     return script
@@ -360,7 +364,7 @@ class SysinitTask(Task):
             md.update(command + '\000')
         token = md.hexdigest()
         commands = []
-        tmpl = 'test -f $RAVELLO_HOME/sysinit/{0}.done && exit 0'
+        tmpl = 'test -f $RAVELLO_HOME/sysinit/{0}.done && exit 0 || true'
         commands.append(tmpl.format(token))
         commands.extend(self.commands)
         tmpl = 'touch $RAVELLO_HOME/sysinit/{0}.done'

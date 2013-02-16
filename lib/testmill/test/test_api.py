@@ -27,43 +27,42 @@ from testmill.test import *
 from testmill.test import networkblocker
 
 
-@systemtest
-class TestAPI(TestSuite):
+class TestAPI(IntegrationTestSuite):
     """Test the API client."""
 
     def test_connect(self):
         api = RavelloClient()
-        api.connect(testenv.service_url)
+        api.connect(env.service_url)
         api.close()
 
     def test_login(self):
         api = RavelloClient()
-        api.connect(testenv.service_url)
-        api.login(testenv.username, testenv.password)
+        api.connect(env.service_url)
+        api.login(env.username, env.password)
         api.close()
 
     def test_login_with_invalid_password(self):
         api = RavelloClient()
-        api.connect(testenv.service_url)
-        assert_raises(RavelloError, api.login, 'nouser', testenv.password)
-        assert_raises(RavelloError, api.login, testenv.username, 'invalid')
+        api.connect(env.service_url)
+        assert_raises(RavelloError, api.login, 'nouser', env.password)
+        assert_raises(RavelloError, api.login, env.username, 'invalid')
 
     @require_network_blocking
     def test_connect_fail(self):
         api = RavelloClient(retries=3, timeout=5)
-        parsed = urlparse.urlsplit(testenv.service_url)
+        parsed = urlparse.urlsplit(env.service_url)
         ipaddr = socket.gethostbyname(parsed.netloc)
         with networkblocker.block_ip(ipaddr):
-            assert_raises(RavelloError, api.connect, testenv.service_url)
+            assert_raises(RavelloError, api.connect, env.service_url)
         # RavelloClient.connect does not retry
         assert api._total_retries == 0
 
     @require_network_blocking
     def test_retry_fail(self):
         api = RavelloClient(retries=3, timeout=5)
-        api.connect(testenv.service_url)
-        api.login(testenv.username, testenv.password)
-        parsed = urlparse.urlsplit(testenv.service_url)
+        api.connect(env.service_url)
+        api.login(env.username, env.password)
+        parsed = urlparse.urlsplit(env.service_url)
         ipaddr = socket.gethostbyname(parsed.netloc)
         with networkblocker.block_ip(ipaddr):
             assert_raises(RavelloError, api.hello)
@@ -72,9 +71,9 @@ class TestAPI(TestSuite):
     @require_network_blocking
     def test_retry_succeed(self):
         api = RavelloClient(retries=4, timeout=5)
-        api.connect(testenv.service_url)
-        api.login(testenv.username, testenv.password)
-        parsed = urlparse.urlsplit(testenv.service_url)
+        api.connect(env.service_url)
+        api.login(env.username, env.password)
+        parsed = urlparse.urlsplit(env.service_url)
         ipaddr = socket.gethostbyname(parsed.netloc)
         def timed_block(secs):
             with networkblocker.block_ip(ipaddr):
@@ -91,34 +90,34 @@ class TestAPI(TestSuite):
         api = RavelloClient()
         pickled = pickle.dumps(api)
         api2 = pickle.loads(pickled)
-        api2.connect(testenv.service_url)
-        api2.login(testenv.username, testenv.password)
+        api2.connect(env.service_url)
+        api2.login(env.username, env.password)
         api2.hello()
         api2.close()
 
     def test_pickle_connected(self):
         api = RavelloClient()
-        api.connect(testenv.service_url)
+        api.connect(env.service_url)
         pickled = pickle.dumps(api)
         api2 = pickle.loads(pickled)
-        api2.login(testenv.username, testenv.password)
+        api2.login(env.username, env.password)
         api2.hello()
         api2.close()
 
     def test_pickle_logged_in(self):
         api = RavelloClient()
-        api.connect(testenv.service_url)
-        api.login(testenv.username, testenv.password)
+        api.connect(env.service_url)
+        api.login(env.username, env.password)
         pickled = pickle.dumps(api)
         api2 = pickle.loads(pickled)
         api2.hello()
         api2.close()
 
     def test_hello(self):
-        testenv.api.hello()
+        env.api.hello()
 
     def test_get_images(self):
-        images = testenv.api.get_images()
+        images = env.api.get_images()
         assert len(images) > 0
         assert isinstance(images, list)
         for image in images:

@@ -24,8 +24,8 @@ from testmill.state import env
 
 
 usage = textwrap.dedent("""\
-    Usage: ravtest [-u <user>] [-p <password>] [-s <service_url>]
-                   [-q] [-v] [-d] [-y] [-h] <command> [OPTION]...
+    Usage: ravtest [-u <user>] [-p <password>] [-s <service_url>] [-q] [-v]
+                   [-d] [-y] [-m <manifest>] <command> [OPTION]...
            ravtest --help [<command>]
            ravtest --version
 """)
@@ -48,6 +48,8 @@ description = textwrap.dedent("""\
             Show debugging information
         -y, --yes
             Do not ask for confirmation
+        -m, --manifest
+            Use a different manifest
         -h, --help
             Show help and exit
         -V, --version
@@ -98,6 +100,7 @@ def create_parser():
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-y', '--yes', action='store_true')
+    parser.add_argument('-m', '--manifest')
     parser.add_argument('-h', '--help', action='store_true')
     parser.add_argument('-V', '--version', action='store_true')
     parser.add_argument('subcmd')
@@ -155,6 +158,7 @@ def create_environment(args):
     env.service_url = args.service_url
     env.quiet = args.quiet
     env.verbose = args.verbose
+    env.manifest = args.manifest
     env.debug = args.debug
     env.always_confirm = args.yes
     env.args = args

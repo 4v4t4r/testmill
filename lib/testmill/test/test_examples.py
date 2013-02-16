@@ -16,67 +16,65 @@ from __future__ import absolute_import, print_function
 
 import os
 import urllib
+from nose.tools import nottest
 
 from testmill.state import env
 from testmill.main import main
 from testmill.test import *
 
 
-class TestExamples(TestSuite):
+@nottest  # Skip temporarily as this test is too slow.
+class TestExamples(SystemTestSuite):
     """Run the examples in ~/examples.
 
     This tests TestMill, as well as the functionality of our default images.
     """
 
     def test_python(self):
-        project = os.path.join(topdir(), 'examples', 'python')
+        project = os.path.join(testenv.topdir, 'examples', 'python')
         os.chdir(project)
-        with env.new():
-            status = main(['-u', testenv.username, '-p', testenv.password,
-                           '-s', testenv.service_url, 'run', 'platformtest'])
+        status = main(['-u', testenv.username, '-p', testenv.password,
+                       '-s', testenv.service_url, 'run', 'platformtest'])
         assert status == 0
 
     def test_maven(self):
-        project = os.path.join(topdir(), 'examples', 'maven')
+        project = os.path.join(testenv.topdir, 'examples', 'maven')
         os.chdir(project)
-        with env.new():
-            status = main(['-u', testenv.username, '-p', testenv.password,
-                           '-s', testenv.service_url, 'run', 'platformtest'])
+        status = main(['-u', testenv.username, '-p', testenv.password,
+                       '-s', testenv.service_url, 'run', 'platformtest'])
         assert status == 0
 
     def test_clojure(self):
-        project = os.path.join(topdir(), 'examples', 'clojure')
+        project = os.path.join(testenv.topdir, 'examples', 'clojure')
         os.chdir(project)
-        with env.new():
-            status = main(['-u', testenv.username, '-p', testenv.password,
-                           '-s', testenv.service_url, 'run', 'platformtest'])
+        status = main(['-u', testenv.username, '-p', testenv.password,
+                       '-s', testenv.service_url, 'run', 'platformtest'])
         assert status == 0
 
     def test_multivm_unittest(self):
-        project = os.path.join(topdir(), 'examples', 'multivm')
+        project = os.path.join(testenv.topdir, 'examples', 'multivm')
         os.chdir(project)
         with env.new():
             status = main(['-u', testenv.username, '-p', testenv.password,
                            '-s', testenv.service_url, 'run', 'unittest'])
         assert status == 0
 
-    def test_multivm_production(self):
-        project = os.path.join(topdir(), 'examples', 'multivm')
+    def test_multivm_acceptance(self):
+        project = os.path.join(testenv.topdir, 'examples', 'multivm')
         os.chdir(project)
-        with env.new():
-            status = main(['-u', testenv.username, '-p', testenv.password,
-                           '-s', testenv.service_url, 'run', 'production'])
-            for vm in env.application['applicationLayer']['vm']:
-                if vm['name'] == 'web':
-                    break
-            assert vm['name'] == 'web'
-            ipaddr = vm['dynamicMetadata']['externalIp']
-            for svc in vm['suppliedServices']:
-                basesvc = svc['baseService']
-                if basesvc['name'].startswith('http'):
-                    port = basesvc['portRange']
-                    break
-            assert basesvc['name'].startswith('http')
+        status = main(['-u', testenv.username, '-p', testenv.password,
+                       '-s', testenv.service_url, 'run', 'acceptance'])
+        for vm in env.application['applicationLayer']['vm']:
+            if vm['name'] == 'web':
+                break
+        assert vm['name'] == 'web'
+        ipaddr = vm['dynamicMetadata']['externalIp']
+        for svc in vm['suppliedServices']:
+            basesvc = svc['baseService']
+            if basesvc['name'].startswith('http'):
+                port = basesvc['portRange']
+                break
+        assert basesvc['name'].startswith('http')
         assert status == 0
         url = 'http://{}:{}/FrontPage'.format(ipaddr, port)
         fin = urllib.urlopen(url)

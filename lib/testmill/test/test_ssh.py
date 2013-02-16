@@ -25,26 +25,22 @@ from testmill.state import env
 from testmill.test import *
 
 
-class TestSSH(TestSuite):
+class TestSSH(SystemTestSuite):
     """Test the "ravtest ssh" command."""
 
     @classmethod
     def setup_class(cls):
-        super(TestSSH, cls).setup_class()
-        # Ensure a "fedora17" application is started up.
-        project = os.path.join(topdir(), 'examples', 'platforms')
-        os.chdir(project)
-        with env.new():
-            status = main(['-u', testenv.username, '-p', testenv.password,
-                           '-s', testenv.service_url,
-                           'run', 'platformtest', 'true'])
+        args = get_common_args()
+        args += ['-m', 'platformtest.yml', 'run', 'platformtest', '--dry-run']
+        with env.new():  # do not pollute global test env
+            status = main(args)
             if status != 0:
-                raise SkipTest('Could not start application')
-            cls.appdef = env.appdef
-            cls.application = env.application
-        project, appname, instance = cls.application['name'].split(':')
-        cls.appname = '{}:{}'.format(appname, instance)
-        os.environ['PYTHONPATH'] = os.path.join(topdir(), 'lib')
+                raise SkipTest('Could not start platformtest app.')
+            project, defname, instance = env.application['name'].split(':')
+            appname = '{0}:{1}'.format(defname, instance)
+            vms = [vm['name'] for vm in env.appdef['vms']]
+        cls.appname = appname
+        cls.vms = vms
 
     def test_openssh(self):
         openssh = util.find_openssh()
@@ -58,33 +54,33 @@ class TestSSH(TestSuite):
             raise SkipTest('this test requires pexpect')
         # Fire up a new Python process using pexpect. Pexpect will assign a
         # PTY, and therefore the child will use openssh.
-        for vm in self.appdef['vms']:
-            libdir = os.path.join(topdir(), 'lib')
-            args = ['-mtestmill.main', '-u', testenv.username,
-                    '-p', testenv.password, '-s', testenv.service_url,
-                    'ssh', self.appname, vm['name']]
+        os.chdir(testenv.testdir)
+        for vm in self.vms:
+            libdir = os.path.join(testenv.topdir, 'lib')
+            args = ['-mtestmill.main']
+            args += get_common_args()
+            args += ['-m', 'platformtest.yml', 'ssh', self.appname, vm]
             child = pexpect.spawn(sys.executable, args)
             # Try to get some remote output. The interaction between Unix TTYs,
             # regular expressions, python string escapes, and shell expansions
-            # make the 5 lines below the path to the Zen of Unix.
+            # make the 3 lines below the path to the Zen of Unix.
             child.expect('\$')  # escape '$' regex special
-            child.send("echo 'Hello from remote!'\n")  # escape ! history expansion
-            # eat echo, TTY changed '\n' to '\r\n', and literal \ + r to match \r
-            child.expect(r"remote!'\r\n")
-            line = child.readline()
-            assert line.endswith('Hello from remote!\r\n')  # now without '
+            child.send("echo 'Hello from remote!'\n")  # escape ! history expn
+            # Skip echo, TTY changed '\n' to '\r\n', and literal \ + r and 
+            # \ + n to match \r\n.
+            child.expect(r'remote!\r\n')  # note: without ' so not the echo
             child.send('exit\n')
             child.expect([pexpect.EOF, pexpect.TIMEOUT])
 
     def test_paramiko(self):
         # Subprocess will fire up the child without a PTY, and therefore the
         # child will elect to use Paramiko instead of openssh.
-        for vm in self.appdef['vms']:
-            libdir = os.path.join(topdir(), 'lib')
-            command =  [sys.executable, '-mtestmill.main',
-                        '-u', testenv.username, '-p', testenv.password,
-                        '-s', testenv.service_url,
-                        'ssh', self.appname, vm['name']]
+        os.chdir(testenv.testdir)
+        for vm in self.vms:
+            libdir = os.path.join(testenv.topdir, 'lib')
+            command =  [sys.executable, '-mtestmill.main']
+            command += get_common_args()
+            command += ['-m', 'platformtest.yml', 'ssh', self.appname, vm]
             child = subprocess.Popen(command, stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             script = "echo 'Hello from remote!'\nexit\n"

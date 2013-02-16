@@ -21,30 +21,26 @@ from testmill.state import env
 from testmill.test import *
 
 
-@systemtest
-class TestLogin(TestSuite):
+class TestLogin(SystemTestSuite):
 
     def test_login(self):
-        with env.new():
-            status = main(['-u', testenv.username, '-p', testenv.password,
-                           '-s', testenv.service_url, 'login'])
+        status = main(['-u', testenv.username, '-p', testenv.password,
+                       '-s', testenv.service_url, 'login'])
         assert status == 0
 
     def test_login_prompt(self):
-        with env.copy(), mock.patch.multiple('testmill.console',
-                                prompt=lambda *args: testenv.username,
-                                getpass=lambda *args: testenv.password):
+        with mock.patch.multiple('testmill.console',
+                                 prompt=lambda *args: testenv.username,
+                                 getpass=lambda *args: testenv.password):
             status = main(['-s', testenv.service_url, 'login'])
         assert status == 0
 
     def test_login_with_positional_username(self):
-        with env.copy():
-            status = main(['-p', testenv.password, '-s', testenv.service_url,
-                           'login', testenv.username])
+        status = main(['-p', testenv.password, '-s', testenv.service_url,
+                       'login', testenv.username])
         assert status == 0
 
     def test_login_failed(self):
-        with env.copy():
-            status = main(['-u', testenv.username, '-p', 'invalid',
-                           '-s', testenv.service_url, 'login'])
+        status = main(['-u', testenv.username, '-p', 'invalid',
+                       '-s', testenv.service_url, 'login'])
         assert status != 0

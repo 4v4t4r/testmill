@@ -64,13 +64,12 @@ def do_save(args, env):
                           defname, instance, state)
 
     if state == 'STARTED' and not env.always_confirm:
-        console.info('Application `{0}:{1}` is currently running.\n'
-                     'The blueprint will contain an unclean snapshot.',
+        console.info('Application `{0}:{1}` is currently running.',
                      defname, instance)
-        result = console.confirm('Do you want to continue')
+        result = console.confirm('Do you want to continue with a live snapshot')
         if not result:
             console.info('Not confirmed.')
-            return 0
+            return error.EX_OK
 
     template = '{0}:{1}'.format(project, defname)
     bpname = util.get_unused_name(template, cache.get_blueprints())
@@ -78,7 +77,10 @@ def do_save(args, env):
 
     console.info('Saving blueprint as `{0}:{1}`.', parts[1], parts[2])
 
-    env.api.create_blueprint(bpname, app)
+    blueprint = env.api.create_blueprint(bpname, app)
+    env.blueprint = blueprint  # for tests
 
     console.info('Blueprint creation process started.')
     console.info("Use 'ravtest ps -b' to monitor progress.")
+
+    return error.EX_OK

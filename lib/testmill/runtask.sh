@@ -19,6 +19,6 @@ cd $RAVELLO_TEST_DIR
 touch $RAVELLO_ENV_UPDATE
 chmod 644 $RAVELLO_ENV_UPDATE
 
-test "{warn_only}" != "1" && set -e
-
 {shell_commands}
+
+exit 0
