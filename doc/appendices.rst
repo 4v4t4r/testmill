@@ -172,12 +172,12 @@ The images contain the following software:
    versions of ``gcc``, ``g++``, ``make``, the autotools, etc.
 
  * Python runtime and development environment. The system provides Python
-   version is provided. Also installed are ``pip``, ``easy_install`` and
-   ``virtualenv``.
+   version is provided. Also installed are ``pip``, ``easy_install``,
+   ``virtualenv`` and ``nosetests``.
 
  * Python 3.x runtime and development environment. Python 3 is co-installed
    with Python 2 and available as ``python3``. Also provides ``pip3``,
-   ``easy_install3`` and ``virtualenv3``.
+   ``easy_install3``, ``virtualenv3`` and ``nosetests3``.
 
  * A Ruby runtime and development environment. This includes the system version
    of Ruby, the Ruby development headers and libraries, Rake and Bundler.
