@@ -201,7 +201,6 @@ Name        Description             Python  Python 3  Ruby    Java    Clojure
 ubuntu1204  Ubuntu 12.04.x LTS      2.7.3   3.2.3     1.8.7   1.6.0   any
             (latest minor update)
 ubuntu1210  Ubuntu 12.10            2.7.3   3.2.3     1.9.3   1.7.0   any
-fedora16    Fedora 16               2.7.3   3.2.3     1.8.7   1.7.0   any
 fedora17    Fedora 17               2.7.3   3.2.3     1.9.3   1.7.0   any
 fedora18    Fedora 18               2.7.3   3.3.0     1.9.3   1.7.0   any
 centos6     CentOS 6.x              2.6.6   N/A       1.8.7   N/A     N/A
