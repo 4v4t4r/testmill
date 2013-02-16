@@ -1,5 +1,7 @@
 fabric>=1.5.3
 pyyaml
 mock
-pyexpect
+pexpect
 nose
+sphinx
+docutils
