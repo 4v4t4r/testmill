@@ -1,6 +1,12 @@
 Changelog
 =========
 
+New in version 0.9.6
+--------------------
+
+* Many bug fixes.
+* Greatly improved test coverage.
+
 New in version 0.9.5
 --------------------
 
