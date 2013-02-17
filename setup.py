@@ -111,6 +111,6 @@ if __name__ == '__main__':
         packages = ['testmill'],
         install_requires = ['fabric>=1.5.3', 'pyyaml'],
         entry_points = { 'console_scripts': ['ravtest = testmill.main:main'] },
-        package_data = { 'testmill': ['*.yml'] },
+        package_data = { 'testmill': ['*.yml', '*.sh'] },
         **version_info
     )
