@@ -54,7 +54,6 @@ class TestSSH(SystemTestSuite):
             raise SkipTest('this test requires pexpect')
         # Fire up a new Python process using pexpect. Pexpect will assign a
         # PTY, and therefore the child will use openssh.
-        os.chdir(testenv.testdir)
         for vm in self.vms:
             libdir = os.path.join(testenv.topdir, 'lib')
             args = ['-mtestmill.main']
@@ -75,7 +74,6 @@ class TestSSH(SystemTestSuite):
     def test_paramiko(self):
         # Subprocess will fire up the child without a PTY, and therefore the
         # child will elect to use Paramiko instead of openssh.
-        os.chdir(testenv.testdir)
         for vm in self.vms:
             libdir = os.path.join(testenv.topdir, 'lib')
             command =  [sys.executable, '-mtestmill.main']

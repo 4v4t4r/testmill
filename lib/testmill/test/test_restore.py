@@ -38,7 +38,7 @@ class TestRestore(SystemTestSuite):
             vms = [vm['name'] for vm in env.appdef['vms']]
         cls.appname = appname
         args = get_common_args()
-        args += ['-m', 'platformtest.yml', 'save', self.appname, '-y']
+        args += ['-m', 'platformtest.yml', 'save', cls.appname, '-y']
         with env.new():
             status = main(args)
             if status != 0:

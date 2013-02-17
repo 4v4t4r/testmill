@@ -58,7 +58,6 @@ class TestPS(SystemTestSuite):
 
     def test_ps(self):
         stdout = compat.StringIO()
-        os.chdir(testenv.testdir)
         args = get_common_args()
         args += ['-m', 'platformtest.yml', 'ps']
         with mock.patch('sys.stdout', stdout):
@@ -74,7 +73,6 @@ class TestPS(SystemTestSuite):
 
     def test_ps_a(self):
         stdout = compat.StringIO()
-        os.chdir(testenv.testdir)
         args = get_common_args()
         args += ['ps', '-a']
         with mock.patch('sys.stdout', stdout):
@@ -90,7 +88,6 @@ class TestPS(SystemTestSuite):
 
     def test_ps_b(self):
         stdout = compat.StringIO()
-        os.chdir(testenv.testdir)
         args = get_common_args()
         args += ['-m', 'platformtest.yml', 'ps', '-b']
         with mock.patch('sys.stdout', stdout):
@@ -105,7 +102,6 @@ class TestPS(SystemTestSuite):
 
     def test_ps_a_b(self):
         stdout = compat.StringIO()
-        os.chdir(testenv.testdir)
         args = get_common_args()
         args += ['ps', '-a', '-b']
         with mock.patch('sys.stdout', stdout):

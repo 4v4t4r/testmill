@@ -23,7 +23,6 @@ class TestImages(SystemTestSuite):
     """Run some basic test on the standard images."""
 
     def test_images(self):
-        os.chdir(testenv.testdir)
         args = get_common_args()
         args += ['run', '-m', 'platformtest.yml',
                  'platformtest', 'sh check_image.sh']

@@ -40,7 +40,6 @@ class TestSave(SystemTestSuite):
         cls.vms = vms
 
     def test_save(self):
-        os.chdir(testenv.testdir)
         args = get_common_args()
         args += ['-m', 'platformtest.yml', 'save', self.appname, '-y']
         status = main(args)

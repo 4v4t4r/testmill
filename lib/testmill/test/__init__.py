@@ -171,6 +171,10 @@ def get_common_args():
 class TestSuite(object):
     """Base for test suites."""
 
+    @classmethod
+    def setup_class(cls):
+        os.chdir(testenv.testdir)
+
     def setup(self):
         unittest = getattr(self, 'unittest', False)
         integrationtest = getattr(self, 'integrationtest', False)
@@ -182,8 +186,6 @@ class TestSuite(object):
         testenv.tempdir = tempdir()
         testenv._saved_stderr = sys.stderr 
         sys.stderr = sys.stdout  # Have nose capture stderr too
-        testenv.prevdir = os.getcwd()
-        os.chdir(testenv.tempdir)
         testenv.context = env.new()
         testenv.context.__enter__()
         if integrationtest:
@@ -191,6 +193,7 @@ class TestSuite(object):
                         user = testenv.username,
                         password = testenv.password,
                         service_url = testenv.service_url,
+                        manifest = None,
                         quiet = False, verbose=True,
                         debug = True, yes = False)
             main.create_environment(args)
@@ -198,7 +201,6 @@ class TestSuite(object):
 
     def teardown(self):
         testenv.context.__exit__()
-        os.chdir(testenv.prevdir)
         sys.stderr = testenv._saved_stderr
         for dname in testenv._tempdirs:
             rmtree(dname)

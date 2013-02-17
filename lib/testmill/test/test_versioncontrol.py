@@ -32,6 +32,7 @@ class TestVersionControl(UnitTestSuite):
     # walk_repository()
 
     def create_repo(self):
+        os.chdir(testenv.tempdir)
         with mkdir('dir1'):
             with mkdir('sub1'):
                 touch('foo')

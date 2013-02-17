@@ -25,7 +25,6 @@ class TestRun(SystemTestSuite):
     """Test the "ravtest run" command."""
 
     def test_run(self):
-        os.chdir(testenv.testdir)
         args = get_common_args()
         args += ['run', '-m', 'platformtest.yml', 
                  'platformtest', 'true']
@@ -33,7 +32,6 @@ class TestRun(SystemTestSuite):
         assert status == 0
 
     def test_run_failed(self):
-        os.chdir(testenv.testdir)
         args = get_common_args()
         args += ['run', '-m', 'platformtest.yml', 
                  'platformtest', 'false']
