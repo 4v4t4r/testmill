@@ -109,7 +109,8 @@ if __name__ == '__main__':
     setup(
         package_dir = { '': 'lib' },
         packages = ['testmill'],
-        install_requires = ['fabric>=1.5.3', 'pyyaml', 'mock', 'sphinx'],
+        install_requires = ['fabric>=1.5.3', 'pyyaml', 'mock',
+                            'sphinx', 'pexpect'],
         entry_points = { 'console_scripts': ['ravtest = testmill.main:main'] },
         package_data = { 'testmill': ['*.yml', '*.sh'] },
         **version_info
