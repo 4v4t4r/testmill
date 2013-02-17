@@ -26,14 +26,24 @@ class TestRun(SystemTestSuite):
 
     def test_run(self):
         args = get_common_args()
-        args += ['run', '-m', 'platformtest.yml', 
-                 'platformtest', 'true']
+        args += ['run', '-m', 'platformtest.yml', 'platformtest', 'true']
         status = main(args)
         assert status == 0
 
     def test_run_failed(self):
         args = get_common_args()
-        args += ['run', '-m', 'platformtest.yml', 
-                 'platformtest', 'false']
+        args += ['run', '-m', 'platformtest.yml', 'platformtest', 'false']
         status = main(args)
         assert status != 0
+
+    def test_check_abort(self):
+        args = get_common_args()
+        args += ['run', '-m', 'check_abort.yml', 'platformtest']
+        status = main(args)
+        assert status != 0
+
+    def test_check_abort_continue(self):
+        args = get_common_args()
+        args += ['run', '-m', 'check_abort.yml', 'platformtest', '-c']
+        status = main(args)
+        assert status == 0

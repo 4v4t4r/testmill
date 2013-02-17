@@ -1,0 +1,26 @@
+project:
+    name: testmilltest
+    language: nodefaults
+
+applications:
+-   name: platformtest
+    vms:
+    -   name: ubuntu1204
+        tasks:
+        -   name: task1
+            commands:
+            -   "false"
+        -   name: task2
+            commands:
+            -   "true"
+    -   name: ubuntu1210
+        tasks:
+        -   name: task2
+            commands:
+            -   "true"
+        -   name: task3
+            commands:
+            -   "true"
+    -   name: fedora17
+    -   name: fedora18
+    -   name: centos6

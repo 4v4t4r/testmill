@@ -65,8 +65,8 @@ def run_all_tasks(app, vms):
     env.shared_state = manager.dict()
     for vmname in vms:
         vmstate = {}
-        vmstate['current_task'] = None
-        vmstate['completed_tasks'] = []
+        vmstate['exited'] = False
+        vmstate['completed_tasks'] = {}
         vmstate['shell_env_update'] = {}
         env.shared_state[vmname] = vmstate
     env.appdef = appdef
@@ -93,9 +93,9 @@ def run_all_tasks(app, vms):
     errors = set()
     for vmname in vms:
         vmstate = env.shared_state[vmname]
-        if vmstate.get('return_code', 0) != 0:
-            taskname = vmstate.get('current_task', '')
-            errors.add('`{0}` on `{1}`'.format(taskname, vmname))
+        for taskname,status in vmstate['completed_tasks'].items():
+            if status != 0:
+                errors.add('`{0}` on `{1}`'.format(taskname, vmname))
 
     if not errors:
         console.info('All tasks were executed succesfully!')
@@ -165,14 +165,18 @@ def synchronize_on_task(taskname, timeout=600):
     while True:
         for vmdef in env.appdef['vms']:
             vmname = vmdef['name']
+            vmstate = env.shared_state[vmname]  # resync
+            if vmstate['exited']:
+                state[vmname] = vmstate
+                break
             if vmname not in waitfor:
                 continue
-            vmstate = env.shared_state[vmname]  # resync
             if taskname in vmstate['completed_tasks']:
                 waitfor.remove(vmname)
                 state[vmname] = vmstate
-        if not waitfor:
+        if vmstate['exited'] or not waitfor:
             break
+        console.debug('Waiting for %s' % repr(waitfor))
         time.sleep(5)
         if time.time() > end_time:
             error.raise_error("Timeout waiting for task `{0}`.", taskname)
@@ -244,27 +248,37 @@ def run_tasklist(passed_env):
                 debug('Sync state on task `{0}`.', sync_task)
                 completed = synchronize_on_task(sync_task)
                 for name,state in completed.items():
+                    if state['exited']:
+                        break
                     update = state['shell_env_update'].get(sync_task)
                     if update:
                         debug('Updated {0} environment vars.', len(update))
                         env.shell_env.update(update)
+                if completed and state['exited']:
+                    debug('Stopping due to failed task on VM `{0}`.', name)
+                    break
+
             task.run()
 
             vmstate = env.shared_state[vmname]
-            vmstate['completed_tasks'].append(task.name)
+            vmstate['completed_tasks'][task.name] = task.return_code
             vmstate['shell_env_update'][task.name] = task.env_update
-            vmstate['return_code'] = task.return_code
+            if task.return_code != 0 and not env.args.continue_:
+                vmstate['exited'] = True
             env.shared_state[vmname] = vmstate  # sync shared state
 
             with env.lock:
                 show_output(task)
-            if task.return_code != 0 and not env.args.continue_:
+            if vmstate['exited']:
                 break
             sync_task = taskdef['name']
 
     except Exception as e:
         with env.lock:
             console.show_exception(e)
+        vmstate = env.shared_state[vmname]
+        vmstate['exited'] = True
+        env.shared_state[vmname] = vmstate  # sync
 
 
 def create_script(taskname, commands):
@@ -315,7 +329,8 @@ class Task(fabric.tasks.Task):
         for key in kwargs:
             setattr(self, key, kwargs[key])
         self.stdout = ''
-        self.env_update = {}
+        self.env_update = None
+        self.return_code = None
 
     def run(self, commands=None, user=None):
         """Run a remote command through ``fabric.api.run()``.

@@ -204,6 +204,8 @@ the tasks in a synchronized way. This works as follows:
    provided, then the task aborts and the remaining shell commands are not
    executed. Steps on other VMs that run in parallel will continue to execute,
    but when they are done, no new tasks are started and the flows are aborted.
+   If ``--continue`` was provided, then the current task will continue and so
+   will the tasks on the other VMs.
 
  * A task is not started before all task with the same name as the previous
    task on the current VM, complete on all other VMs that have that task. So
