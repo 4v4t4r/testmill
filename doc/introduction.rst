@@ -82,43 +82,9 @@ The directory ``examples/multivm`` contains a simple blog written in Python
 using the Pyramid framework. You will see that there is a file called
 ``.ravello.yml`` in that directory. Its contents are:
 
-.. code-block:: yaml
+.. literalinclude:: ../examples/multivm/.ravello.yml
+    :language: yaml
     :linenos:
-
-    language: nodefaults
-    applications:
-    -   name: unittest
-        vms:
-        -   name: fedora17
-            sysinit:
-            -   yum install -y postgresql-devel
-            prepare:
-            -   sudo pip install -r requirements.txt
-            execute:
-            -   nosetests
-
-    -   name: acceptance
-        vms:
-        -   name: db
-            image: fedora17
-            sysinit:
-            -   deploy/setup-postgres.sh
-            prepare:
-            -   sudo systemctl restart postgresql.service
-
-        -   name: web
-            image: fedora17
-            sysinit:
-            -   yum install -y postgresql-devel
-            prepare:
-            -   sudo pip install -r requirements.txt
-            -   sudo python setup.py develop
-            execute:
-            -   initialize_blog_db production.ini
-            -   killall pserve || true
-            -   nohup pserve production.ini --daemon
-            services:
-            -   http-alt
 
 As you see, the file is in YAML format. The manifest defines two applications:
 ``unittest`` and ``acceptance``. The former consists of one virtual machine
