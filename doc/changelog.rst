@@ -1,6 +1,15 @@
 Changelog
 =========
 
+New in version 0.9.7
+--------------------
+
+* Fix an issue where the installer doesn't download all the required
+  dependencies.
+* Fix a critical issue where our shell glue (runtask.sh and preininit.sh)
+  don't get installed.
+* Some fixes in the test suite.
+
 New in version 0.9.6
 --------------------
 
