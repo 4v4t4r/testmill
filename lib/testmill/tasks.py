@@ -287,7 +287,6 @@ def create_script(taskname, commands):
     fname = os.path.join(packagedir, 'runtask.sh')
     with file(fname) as fin:
         script = fin.read()
-    warn_only = '1' if env.args.continue_ else '0'
     lines = []
     tmpl = '{0}={1}; export {0}'
     for key,value in env.shell_env.items():
@@ -299,7 +298,7 @@ def create_script(taskname, commands):
     else:
         tmpl = '{0}\ntest "$?" -ne "0" && exit 1\n'
     shell_commands = '\n'.join([tmpl.format(cmd) for cmd in commands])
-    script = script.format(warn_only=warn_only, shell_vars=shell_vars,
+    script = script.format(shell_vars=shell_vars,
                            shell_commands=shell_commands)
     return script
 
