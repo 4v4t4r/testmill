@@ -31,4 +31,4 @@ applications:
         -   killall pserve || true
         -   nohup pserve production.ini --daemon
         services:
-        -   http-alt
+        -   8080
