@@ -6,7 +6,6 @@ applications:
     vms:
     - name: ubuntu1204
     - name: ubuntu1210
-    - name: fedora16
     - name: fedora17
     - name: fedora18
     - name: centos6
