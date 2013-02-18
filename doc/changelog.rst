@@ -1,6 +1,13 @@
 Changelog
 =========
 
+New in version 0.9.8
+--------------------
+
+* Fix a rather serious bug that could cause a deadlock in certain
+  situation when a task failed.
+* Improve the quick start in the documentation.
+
 New in version 0.9.7
 --------------------
 
