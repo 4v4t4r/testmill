@@ -6,7 +6,7 @@ Installation Instructions
 =========================
 
 This section contains generic installation instructions. See the bottom of this
-section of specific instruction on installing on Linux, Mac and Windows.
+section for specific instruction on installing on Linux, Mac and Windows.
 
 TestMill is written in the Python programming language, and has the following
 dependencies:
@@ -22,14 +22,14 @@ the following command::
 
  $ sudo easy_install testmill
 
-One caveat is the PyCrypto dependency. PyCrypto contains a few modules written
-in the C programming language. In general it is recommended to use the PyCrypto
-version that is provided by your OS vendor, if available. Otherwise, you will
-need to compile it yourself. The ``easy_install`` command above will do this
-automatically, but to do so it will need access to a C compiler. Normally this
-is not a problem on Linux, but Mac and Windows do not have a C compiler
-installed by default. See the OS specific installation instructions below for
-more information.
+One caveat is that TestMill has an indirect dependency on PyCrypto. PyCrypto
+contains a few modules written in C which need to be compiled. In general it is
+recommended to use the PyCrypto version that is provided by your OS vendor, if
+one is available. The alternative is to compile it yourself. The
+``easy_install`` command above will do this automatically, however, to do so it
+will need a C compiler.  Normally this is not a problem on Linux, but Mac and
+Windows do not ship with C compiler by default. See the OS specific
+installation instructions below for more information.
 
  * :ref:`linux-installation`
  * :ref:`windows-installation`
@@ -49,85 +49,139 @@ clicking ont he "Try it now" button.
 Running your first Application
 ==============================
 
-Once you've installed TestMill and registered for Ravello, you can start
+Once you've installed TestMill and registered for Ravello, we can start
 exploring it. In this section we will give you a small example to wet your
 appetite. 
 
-The job of TestMill is to build applications and run workflows in them. When we
-say application in the context of Ravello, we mean something very specific. In
-Ravello, an application is a completely isolated set of virtual machines,
-networks and storage that runs together as a unit somewhere in the cloud and
-implements one or more services (typically network-accessible). One example of
-an application that would be very suited to run in Ravello would be a 3-tier
-web-based application with a load balancer, application tier, and database
-tier.
+TestMill was designed to provide simple yet powerful automation for development
+and test workflows. Its core feature is that it can build multi-vm applications
+on the fly using the Ravello Cloud Application Hypervisor, and then run
+workflows in them.
 
-In TestMill, Ravello applications are described using a textual format called
-the *manifest*. By convention, the manifest is stored in a file called
-``.ravello.yml`` in the root directory of a source code repository. The
-manifest is version controlled together with the rest of the code, and defines
-applications that are relevant to the code contained in the repository. It can
-define for example different kinds of development and test environments for the
-code base. This concept of describing infrastructure as part of your source
-code is called *infrastructure as code* and is an important concept in the
-*devops* movement.
+When we say application in the context of Ravello, we mean something very
+specific. In Ravello, an application is a completely isolated set of virtual
+machines, networks and storage that runs together as a unit somewhere in the
+cloud and implements one or more (typically network-accessible) services. You
+have complete control over all the aspects of the application infrastructure,
+which makes it a great tool for creating efficient and high-fidelity
+development and test environments.
 
-We will use one of the example applications bundled with TestMill to illustrate
-this. On a command-line, issue the following commands::
+In TestMill, Ravello applications are described by a text file called the
+*manifest*. By convention, the manifest is stored as ``.ravello.yml`` in the
+root directory of a source code repository. The manifest is version controlled
+together with the rest of the code, and defines applications that are relevant
+to the code contained in the repository. It can define for example different
+kinds of development and test environments for the code base. This concept of
+describing infrastructure as part of your source code is called *infrastructure
+as code* and is an important concept in the *devops* movement.
+
+Let's first run a really simple application to illustrate the concept of the
+manifest and work flows. On a command-line, issue the following commands::
 
     $ git clone https://github.com/ravello/testmill
-    $ cd testmill/examples/multivm
+    $ cd testmill/examples/platforms
 
-The directory ``examples/multivm`` contains a simple blog written in Python
-using the Pyramid framework. You will see that there is a file called
-``.ravello.yml`` in that directory. Its contents are:
+The directory ``examples/platforms`` contains a basic manifest that creates a
+single application with 5 different virtual machines. Each virtual machine will
+execute the command ``uname`` command to identify itself.  As mentioned above,
+the manifest is stored in the file ``.ravello.yml``, and looks like this:
 
-.. literalinclude:: ../examples/multivm/.ravello.yml
+.. literalinclude:: ../examples/platforms/.ravello.yml
     :language: yaml
     :linenos:
 
-As you see, the file is in YAML format. The manifest defines two applications:
-``unittest`` and ``acceptance``. The former consists of one virtual machine
-only, based on Fedora 17. The latter consists of two virtual machines, one
-database server and one web server. The manifest also defines the workflow for
-each application. This is done using the ``sysinit:``, ``prepare:`` and
-``execute:`` keys.
-
-We will explain the manifest in much more detail later. For now, just observe
-the behavior of TestMill when you run an application. Issue these commands::
+As you see, the file is in YAML format. To run the manifest, issue these
+commands::
 
     $ ravtest login
-    $ ravtest run acceptance
+    $ ravtest run platformtest
 
-The second command may take up to 10-15 minutes to complete the first time you
-run it while the 'acceptance' application is being constructed, published to a
-cloud, and while the workflows are run. After it is done, the output will be
-something like this::
+The ``ravtest run`` command will execute the actual manifest. It might take up
+to 5 minutes to complete while the application is being published to a cloud.
+This time is only required the first time you create an application, subsequent
+runs will be a lot faster.
 
-    Using 'multivm' as the project name.
-    Detected a python project.
-    Created new application `acceptance:1`.
+The output of the will be something like this::
+
+    Created new application `platformtest:1`.
+    Published to AMAZON/Virginia.
     Waiting until application is ready...
     Progress: 'P' = Publishing, 'S' = Starting, 'C' = Connecting
-    ===> PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPCCCCCCCCCCCCCCCCCCCCCCCCC DONE
-    Starting run `2c044b0ef5c878bf80232bf22e9224cf`.
-    Executing tasks on 2 virtual machines...
+    ===> PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPCCCCCCCCCCCCCCCCCCCCCC DONE
+    Starting run `a7b4f326620f11d7c57cd3847123b3a0`.
+    Executing tasks on 5 virtual machines...
 
-    == Output for task `execute` on VM `web`:
+    == Output for task `execute` on VM `fedora18`:
 
-    pserve: no process found
-    nohup: ignoring input and appending output to `nohup.out'
+    Linux fedora18 3.7.7-201.fc18.x86_64
+
+    == Output for task `execute` on VM `ubuntu1204`:
+
+    Linux ubuntu1204 3.5.0-23-generic
+
+    == Output for task `execute` on VM `fedora17`:
+
+    Linux fedora17 3.7.6-102.fc17.x86_64
+
+    == Output for task `execute` on VM `ubuntu1210`:
+
+    Linux ubuntu1210 3.5.0-17-generic
+
+    == Output for task `execute` on VM `centos6`:
+
+    Linux centos6 2.6.32-279.19.1.el6.x86_64
 
     All tasks were executed succesfully!
 
-    == The following services will be available for 90 minutes:
+    == The following services will be available for 50 minutes:
 
-    On virtual machine `db`:
-        * ssh: 54.234.131.13 port 22
+    On virtual machine `ubuntu1210`:
+        * ssh: 23.20.95.233 port 22
 
-    On virtual machine `web`:
-        * http-alt: http://54.242.158.231:8080/
-        * ssh: 54.242.158.231 port 22
+    On virtual machine `ubuntu1204`:
+        * ssh: 54.234.154.151 port 22
 
-Go ahead and point your web browser to the link indicated below the 'web` VM.
-You should see a simple blog running there.
+    On virtual machine `centos6`:
+        * ssh: 54.234.217.197 port 22
+
+    On virtual machine `fedora18`:
+        * ssh: 107.20.85.146 port 22
+
+    On virtual machine `fedora17`:
+        * ssh: 54.234.188.248 port 22
+
+We will explain the manifest in great detail in the rest of this manual.
+However, a few things can already be gleaned from this output:
+
+ * TestMill created a new Ravello application ``platformtest:1`` for the
+   application specified in the manifest.
+
+ * The application was published to a cloud, in this case to the "Virginia"
+   region of Amazon Web Services.
+
+ * A unique ID ``a7b4f326620f11d7c57cd3847123b3a0`` was allocated to the
+   current run.
+
+ * The application was created with 5 virtual machines based on versions of
+   Fedora, Ubuntu and CentOS.
+
+ * As can be seen from the command output, the host name for each virtual
+   machine was set to the name specified for the VM in the manifest.
+
+ * After the run is complete, the VMs will stay up for 50 minutes. This allows
+   you to go back into the system and examine in case there was a failure. Go
+   ahead right now and issue the command::
+
+    $ ravtest ssh platformtest:1 ubuntu1210
+
+   This will connect you to the ``ubuntu1201`` virtual machine through ssh. By
+   default the shell will start out in the directory of the last run.
+
+   After the 50 minutes, the application is shut down. It will automatically be
+   restarted in case it is needed by future ``ravtest run`` or ``ravtest ssh``
+   commands.
+
+This is all for the introduction. In the rest of this manual we will explain in
+much more detail how the manifest works, including how to define more
+complicated work flows using TestMill's unique multi-vm work flow
+synchronization and communication facilities.
