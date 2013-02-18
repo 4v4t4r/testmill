@@ -6,6 +6,8 @@ New in version 0.9.9
 
 * Always publish to Amazon. Amazon is preferred because it allows us
   to stop instances rather than kill them.
+* Allow specification of the memory size for the VMs. The default is
+  2048 MiB.
 
 New in version 0.9.8
 --------------------

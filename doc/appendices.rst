@@ -249,6 +249,8 @@ name      string  The name of the VM. Must be unique in
 image     string  The name of an image in the library.
                   Must be provided in case this application
                   does *not* derive from a blueprint.
+memory    int     The amount of RAM allocated to the VM, specified
+                  in MiB.
 tasks     list    List of tasks. Entries must be tasks, see below.
                   Tasks are executed in the order specified.
 services  list    List of external services provided by this VM.

@@ -5,6 +5,7 @@ defaults:
     applications:
         keepalive: 50
     vms:
+        memory: 2048
         tasks:
         -   name: deploy
             quiet: true
