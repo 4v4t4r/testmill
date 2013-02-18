@@ -280,8 +280,8 @@ def create_or_reuse_application(appdef, force_new):
     if app is None:
         app = create_new_application(appdef)
         parts = app['name'].split(':')
-        console.info('Created new application `{0}:{1}`.',
-                     parts[1], parts[2])
+        console.info('Created new application `{1}:{2}`.', *parts)
+        console.info('Published to {0[cloud]}/{0[regionName]}.', app)
     return app
 
 
