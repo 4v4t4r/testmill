@@ -1,11 +1,12 @@
 project:
     name: testmilltest
-    language: nodefaults
 applications:
 -   name: platformtest
     vms:
-    - name: ubuntu1204
-    - name: ubuntu1210
-    - name: fedora17
-    - name: fedora18
-    - name: centos6
+    -   name: ubuntu1204
+    -   name: ubuntu1210
+    -   name: fedora17
+    -   name: fedora18
+    -   name: centos6
+    execute:
+    -   uname -nrs
