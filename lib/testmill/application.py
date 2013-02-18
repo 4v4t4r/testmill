@@ -261,7 +261,8 @@ def create_new_application(appdef):
             vms.append(vm)
         app['applicationLayer'] = { 'vm': vms }
         app = env.api.create_application(app)
-    env.api.publish_application(app)
+    req = { 'prefferedCloud': 'AMAZON' }  # sic.
+    env.api.publish_application(app, req)
     app = cache.get_full_application(app['id'], force_reload=True)
     return app
 

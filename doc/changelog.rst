@@ -1,6 +1,12 @@
 Changelog
 =========
 
+New in version 0.9.9
+--------------------
+
+* Always publish to Amazon. Amazon is preferred because it allows us
+  to stop instances rather than kill them.
+
 New in version 0.9.8
 --------------------
 
