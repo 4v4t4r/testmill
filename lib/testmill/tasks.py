@@ -123,7 +123,7 @@ def preinit():
         url = url_template.format(env.api.url, app['id'], vm['id'])
         shutdown_urls.append(url)
     shutdown_urls = ' '.join(map(util.shell_escape, shutdown_urls))
-    keepalive = env.appdef.get('keepalive', 90)
+    keepalive = env.appdef.get('keepalive', 50)
     script = script.format(test_id=env.test_id, keepalive=keepalive,
                            api_cookie=env.api._cookie,
                            shutdown_urls=shutdown_urls)
