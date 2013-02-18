@@ -81,7 +81,7 @@ def run_all_tasks(app, vms):
     fab.env.parallel = True
     fab.env.output_prefix = env.debug
     fabric.state.output.running = env.debug
-    fabric.state.output.output = env.debug
+    fabric.state.output.output = True
     fabric.state.output.status = env.debug
 
     # This is where it all happens...
@@ -130,12 +130,12 @@ def preinit():
     script_name = '{0}.preinit'.format(env.test_id)
     fab.put(io.StringIO(script), script_name)
     command = 'exec $SHELL {0}'.format(script_name)
-    fab.run(command)
+    fab.run(command, shell=False, pty=True, quiet=not env.debug)
 
 
 def show_output(task):
     """Show output for a completed task."""
-    if env.args.interactive:
+    if task.interactive:
         return
     if task.quiet and not env.debug:
         return
@@ -324,7 +324,14 @@ class Task(fabric.tasks.Task):
         self.name = name
         self.user = kwargs.pop('user', None)
         self.commands = kwargs.pop('commands', [])
-        self.quiet = kwargs.pop('quiet', False)
+        if env.verbose:
+            self.quiet = False
+        else:
+            self.quiet = kwargs.pop('quiet', False)
+        if env.args.interactive:
+            self.interactive = True
+        else:
+            self.interactive = kwargs.pop('interactive', False)
         for key in kwargs:
             setattr(self, key, kwargs[key])
         self.stdout = ''
@@ -344,9 +351,9 @@ class Task(fabric.tasks.Task):
         script_name = 'runs/{0}/.ravello/{1}.sh'.format(env.test_id, self.name)
         script = create_script(self.name, commands)
         fab.put(io.StringIO(script), script_name)
-        runargs = {'shell': False, 'pty': True, 'warn_only': True }
-        if not env.args.interactive:
-            runargs['quiet'] = True
+        runargs = {'shell': False, 'pty': True, 'warn_only': True}
+        show_output = env.debug or (self.interactive and not self.quiet)
+        runargs['quiet'] = not show_output
         if user is None:
             user = self.user
         if user:

@@ -269,22 +269,26 @@ Tasks
 The following table lists the available keys for tasks that are specified for a
 virtual machine.
 
-========  ======  ===================================================
-Name      Type    Description
-========  ======  ===================================================
-name      string  The name of the task. Must be unique
-                  within the VM. Mandatory.
-class     string  The name of the Python class imlementing
-                  the command. Should point to an importable Python
-                  class, which would typically be part of the
-                  repository. Default: ``testmill.tasks.Task``.
-command   list    List of shell commands. Must be a list of strings.
-                  The commands are executed in order.
-user      string  Whether to use sudo to execute the commands as the
-                  specified user.
-quiet     bool    Whether to display output for this command.
-                  Default: false  (= show output)
-========  ======  ===================================================
+===========  ======  ===================================================
+Name         Type    Description
+===========  ======  ===================================================
+name         string  The name of the task. Must be unique
+                     within the VM. Mandatory.
+class        string  The name of the Python class imlementing
+                     the command. Should point to an importable Python
+                     class, which would typically be part of the
+                     repository. Default: ``testmill.tasks.Task``.
+command      list    List of shell commands. Must be a list of strings.
+                     The commands are executed in order.
+user         string  Whether to use sudo to execute the commands as the
+                     specified user.
+quiet        bool    Whether to display output for this command.
+                     Default: false  (= show output)
+interactive  bool    Whether the task runs interactively. Interactive
+                     tasks display output directly to the console during
+                     execution. Non-interative tasks show output only
+                     after they are done. Default: false
+===========  ======  ===================================================
 
 
 .. _env-vars:

@@ -30,9 +30,11 @@ class ParseError(RuntimeError):
 ValidationError = validate.ValidationError
 
 
-def merge(source, dest, only_key=None):
+def merge(source, dest, only_keys=None):
     """Merge the dictionary ``source`` onto ``dest``."""
     for key,value in source.items():
+        if only_keys is not None and key not in only_keys:
+            continue
         if key not in dest:
             dest[key] = copy.deepcopy(value)
         elif isinstance(value, dict) and isinstance(dest[key], dict):
@@ -165,6 +167,7 @@ def percolate_defaults(manifest):
             for taskdef in vmdef.get('tasks', []):
                 merge(langdefs.get('tasks', {}), taskdef)
                 merge(defaults.get('tasks', {}), taskdef)
+                merge(vmdef, taskdef, only_keys=('interactive', 'quiet'))
     if 'defaults' in manifest:
         del manifest['defaults']
     if 'languages' in manifest:
