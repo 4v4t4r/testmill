@@ -242,6 +242,7 @@ def check_manifest(manifest):
     check('/applications/*/vms/*', (str, dict))
     check('/applications/*/vms/*/!name', str)
     check('/applications/*/vms/*/image', str)
+    check('/applications/*/vms/*/smp', int)
     check('/applications/*/vms/*/memory', int)
     check('/applications/*/vms/*/tasks', list)
     check('/applications/*/vms/*/tasks/*', (str, dict))

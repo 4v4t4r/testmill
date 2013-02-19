@@ -249,8 +249,10 @@ name      string  The name of the VM. Must be unique in
 image     string  The name of an image in the library.
                   Must be provided in case this application
                   does *not* derive from a blueprint.
+smp       int     The number of CPUs allocated to this VM.
+                  Default: 1
 memory    int     The amount of RAM allocated to the VM, specified
-                  in MiB.
+                  in MiB. Default: 2048 (2 GB)
 tasks     list    List of tasks. Entries must be tasks, see below.
                   Tasks are executed in the order specified.
 services  list    List of external services provided by this VM.

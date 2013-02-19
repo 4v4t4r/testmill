@@ -226,6 +226,7 @@ def create_new_vm(vmdef):
     vm['name'] = vmdef['name']
     vm['customVmConfigurationData'] = { 'keypair': env.public_key }
     vm['hostname'] = [ vmdef['name'] ]
+    vm['numCpus'] = vmdef['smp']
     vm['memorySize'] = { 'unit': 'MB', 'value': vmdef['memory'] }
     vm.setdefault('suppliedServices', [])
     for svcdef in vmdef.get('services', []):

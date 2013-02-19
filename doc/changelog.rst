@@ -8,6 +8,7 @@ New in version 0.9.9
   to stop instances rather than kill them.
 * Allow specification of the memory size for the VMs. The default is
   2048 MiB.
+* Allow specification of the number of CPUs.
 
 New in version 0.9.8
 --------------------
