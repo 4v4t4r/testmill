@@ -83,6 +83,8 @@ def parse_gitignore(fin):
     return parsed
 
 
+INCLUDE, EXCLUDE, TRUNCATE = range(3)
+
 def match_gitignore(path):
     """Match a path that contains .gitignore files at multiple levels.
 
@@ -90,6 +92,9 @@ def match_gitignore(path):
     """
     elem = path[-1][0]  # path = [(name, parsed_ignore_file, mode_or_ignore)]
     is_directory = stat.S_ISDIR(path[-1][2])
+    if is_directory and elem == '.git':
+        return TRUNCATE
+
     if len(path) > 1:
         ignored = path[-2][2]
     else:
@@ -116,7 +121,7 @@ def match_gitignore(path):
                 else:
                     if not flags & MATCH_END_WITH_DIRECTORY or is_directory:
                         ignored = sense
-    return ignored
+    return INCLUDE if not ignored else EXCLUDE
 
 
 def _walk_repository(repodir, ignore_file=None, parse_ignore=None,
@@ -172,11 +177,6 @@ def _walk_repository(repodir, ignore_file=None, parse_ignore=None,
         except OSError:
             continue
 
-        # Always ignore the .git directory
-
-        if fname == '.git' and stat.S_ISDIR(st.st_mode):
-            continue
-
         if stat.S_ISREG(st.st_mode):
             path[depth] = (fname, parsed_ignore_file, st.st_mode)
             if not match_ignore or not match_ignore(path):
@@ -184,15 +184,16 @@ def _walk_repository(repodir, ignore_file=None, parse_ignore=None,
 
         elif stat.S_ISDIR(st.st_mode):
             path[depth] = (fname, parsed_ignore_file, st.st_mode)
-            ignore = match_ignore(path) if match_ignore else False
+            ignore = match_ignore(path) if match_ignore else INCLUDE
             path[depth] = (fname, parsed_ignore_file, ignore)
-            path_yielded = False
-            for elem in _walk_repository(fullname, ignore_file, parse_ignore,
-                                         match_ignore, path, depth+1):
-                if not path_yielded:
-                    yield os.path.join(*(p[0] for p in path[:depth+1]))
-                    path_yielded = True
-                yield elem
+            if ignore != TRUNCATE:
+                path_yielded = False
+                for elem in _walk_repository(fullname, ignore_file, parse_ignore,
+                                             match_ignore, path, depth+1):
+                    if not path_yielded:
+                        yield os.path.join(*(p[0] for p in path[:depth+1]))
+                        path_yielded = True
+                    yield elem
 
         # Ignore anything that is not a file or directory.
     del path[-1]
@@ -231,6 +232,34 @@ def get_git_checkout_command(url, version):
     commands.append('git fetch origin')
     commands.append('git checkout {0}'.format(version))
     return commands
+
+
+def detect_hg_repository(repodir='.'):
+    """Detect if ``repodir`` is a Mercurial repository."""
+    for fname in os.listdir(repodir):
+        if fname == '.hg':
+            fullname = os.path.join(repodir, fname)
+            st = os.stat(fullname)
+            if stat.S_ISDIR(st.st_mode):
+                return True
+    return False
+
+def parse_hgignore(fin):
+    # TBD
+    return []
+
+def match_hgignore(path):
+    """Match a path that contains .hgignore files at multiple levels."""
+    elem = path[-1][0]  # path = [(name, parsed_ignore_file, mode_or_ignore)]
+    is_directory = stat.S_ISDIR(path[-1][2])
+    if is_directory and elem == '.hg':
+        return TRUNCATE
+    return INCLUDE
+
+def walk_hg_repository(repodir='.'):
+    """Walk a Mercurial repository."""
+    return _walk_repository(repodir, '.hgignore', parse_hgignore,
+                            match_hgignore)
 
 
 def detect_type(repodir='.'):
@@ -276,6 +305,8 @@ def get_origin(repodir='.', repotype='auto'):
     if repotype not in registry:
         error.raise_error("Unknown repository type '{0}'.", repotype)
     get_origin = registry[repotype][2]
+    if get_origin is None:
+        return
     return get_origin(repodir)
 
 
@@ -284,10 +315,13 @@ def get_checkout_command(url, version, repotype):
     if repotype not in registry:
         error.raise_error("Unknown repository type '{0}'.", repodir)
     get_checkout_command = registry[repotype][3]
+    if get_checkout_command is None:
+        return []
     return get_checkout_command(url, version)
 
 
 registry = {
     'git': (detect_git_repository, walk_git_repository, get_git_origin,
-            get_git_checkout_command)
+            get_git_checkout_command),
+    'mercurial': (detect_hg_repository, walk_hg_repository, None, None)
 }

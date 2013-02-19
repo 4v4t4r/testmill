@@ -9,6 +9,7 @@ New in version 0.9.9
 * Allow specification of the memory size for the VMs. The default is
   2048 MiB.
 * Allow specification of the number of CPUs.
+* Add basic mercurial support (no parsing of .hginore files yet).
 
 New in version 0.9.8
 --------------------

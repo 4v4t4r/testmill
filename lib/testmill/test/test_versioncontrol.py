@@ -24,6 +24,7 @@ import mock
 from testmill.test import *
 from testmill.test.fileops import *
 from testmill import versioncontrol
+from testmill.versioncontrol import *
 
 
 class TestVersionControl(UnitTestSuite):
@@ -117,9 +118,9 @@ class TestVersionControl(UnitTestSuite):
 
     def test_match_gitignore_types(self):
         path = [('foo', None, stat.S_IFREG)]
-        assert versioncontrol.match_gitignore(path) is False
+        assert versioncontrol.match_gitignore(path) == INCLUDE
         path = [('foo', [([re.compile('foo')], 0)], stat.S_IFREG)]
-        assert versioncontrol.match_gitignore(path) is True
+        assert versioncontrol.match_gitignore(path) == EXCLUDE
 
     def test_match_gitignore_single(self):
         path = [('foo', [([re.compile('.*')], 0)], stat.S_IFREG)]
