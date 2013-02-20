@@ -24,7 +24,7 @@ from setuptools import setup
 
 version_info = {
     'name': 'testmill',
-    'version': '0.9.10.dev',
+    'version': '0.9.10',
     'description': 'Create multi-VM application environments for dev/test.',
     'author': 'Geert Jansen',
     'author_email': 'geert.jansen@ravellosystems.com',
