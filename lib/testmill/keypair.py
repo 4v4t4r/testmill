@@ -17,6 +17,7 @@ from __future__ import absolute_import
 import os
 import stat
 import socket
+import subprocess
 
 from testmill import util, console, error, util
 from testmill.state import env
@@ -75,7 +76,7 @@ def create_keypair():
         keyparts = pubkey.strip().split()
     else:
         keyname = 'ravello@api-generated'
-        output.info('Requesting a new keypair via the API...')
+        console.info('Requesting a new keypair via the API...')
         keypair = env.api.create_keypair()
         with file(privname, 'w') as fout:
             fout.write(keypair['privateKey'])
@@ -90,7 +91,7 @@ def create_keypair():
     keyname = util.get_unused_name(keyname, pubkeys)
     keyparts[2] = keyname
     keydata = '{0} {1} {2}\n'.format(*keyparts)
-    pubkey = ravello.Pubkey(name=keyname)
+    pubkey = {'name': keyname}
     pubkey['publicKey'] = keydata
     pubkey = env.api.create_pubkey(pubkey)
     with file(pubname, 'w') as fout:

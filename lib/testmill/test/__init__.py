@@ -35,7 +35,7 @@ else:
 
 __all__ = ('testenv', 'require_sudo', 'require_network_blocking',
            'TestSuite', 'unittest', 'integrationtest', 'systemtest',
-           'tempdir', 'get_common_args', 'parse_ps_output')
+           'tempdir', 'get_common_args', 'parse_ps_output', 'environ')
 
 
 testdir, _ = os.path.split(os.path.abspath(__file__))
@@ -161,12 +161,23 @@ def get_common_args():
     return args
 
 
-# Base classes for test suites. There are three types:
-#
-# * UnitTestSuite: tests get an empty env
-# * IntegrationTestSuite: tests get a configured env. API credentials required.
-# * SystemTestSuite: tests and an empty env. Useful for testing the main
-#   entry point. API credentails required.
+class environ(object):
+    """Context manager to manage os.environ."""
+
+    def __init__(self, **env):
+        self.env = env
+        self.restore = {}
+
+    def __enter__(self):
+        for key in self.env:
+            self.restore[key] = os.environ[key]
+            os.environ[key] = self.env[key]
+
+    def __exit__(self, *exc_info):
+        for key in self.restore:
+            os.environ[key] = self.restore[key]
+        self.restore.clear()
+
 
 class TestSuite(object):
     """Base for test suites."""

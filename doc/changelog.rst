@@ -4,6 +4,9 @@ Changelog
 New in version 0.9.10
 ---------------------
 
+* Fix an important bug that would prevent first-time users from
+  using TestMill due to an issue with keypair generation.
+
 New in version 0.9.9
 --------------------
 
