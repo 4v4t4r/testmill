@@ -19,7 +19,8 @@ from testmill.main import main
 from testmill.test import *
 
 
-class TestImages(SystemTestSuite):
+@systemtest
+class TestImages(TestSuite):
     """Run some basic test on the standard images."""
 
     def test_images(self):

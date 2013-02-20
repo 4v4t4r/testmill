@@ -22,7 +22,8 @@ from testmill.state import env
 from testmill.test import *
 
 
-class TestSave(SystemTestSuite):
+@systemtest
+class TestSave(TestSuite):
     """Test the "ravtest save" command."""
 
     @classmethod

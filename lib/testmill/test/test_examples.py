@@ -24,7 +24,8 @@ from testmill.test import *
 
 
 @nottest  # Skip temporarily as this test is too slow.
-class TestExamples(SystemTestSuite):
+@systemtest
+class TestExamples(TestSuite):
     """Run the examples in ~/examples.
 
     This tests TestMill, as well as the functionality of our default images.

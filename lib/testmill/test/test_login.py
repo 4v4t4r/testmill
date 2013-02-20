@@ -21,7 +21,8 @@ from testmill.state import env
 from testmill.test import *
 
 
-class TestLogin(SystemTestSuite):
+@systemtest
+class TestLogin(TestSuite):
 
     def test_login(self):
         status = main(['-u', testenv.username, '-p', testenv.password,

@@ -34,7 +34,7 @@ else:
 
 
 __all__ = ('testenv', 'require_sudo', 'require_network_blocking',
-           'UnitTestSuite', 'IntegrationTestSuite', 'SystemTestSuite',
+           'TestSuite', 'unittest', 'integrationtest', 'systemtest',
            'tempdir', 'get_common_args', 'parse_ps_output')
 
 
@@ -207,32 +207,29 @@ class TestSuite(object):
         del testenv._tempdirs[:]
 
 
-class UnitTestSuite(TestSuite):
-    """
-    A suite of unit tests.
+def unittest(obj):
+    """A suite of unit tests.
 
     Each unit tests get a new empty env.
     Run all unit tests with "nosetests -a unittest".
     """
+    obj.unittest = True
+    return obj
 
-    unittest = True
-
-
-class IntegrationTestSuite(TestSuite):
+def integrationtest(obj):
     """A suite of integration tests.
 
     Each test get a new and fully configured env.
     Run all integration tests with "nosetests -a integrationtest".
     """
+    obj.integrationtest = True
+    return obj
 
-    integrationtest = True
-
-
-class SystemTestSuite(TestSuite):
+def systemtest(obj):
     """A suite of system tests.
 
     Each test gets a new empty env. The test will bootstrap the env
     through its command-line arguments.
     """
-
-    systemtest = True
+    obj.systemtest = True
+    return obj

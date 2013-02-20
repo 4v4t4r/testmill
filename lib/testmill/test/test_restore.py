@@ -22,7 +22,8 @@ from testmill.state import env
 from testmill.test import *
 
 
-class TestRestore(SystemTestSuite):
+@systemtest
+class TestRestore(TestSuite):
     """Test the "ravtest restore" command."""
 
     @classmethod

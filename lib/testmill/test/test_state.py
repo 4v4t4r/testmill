@@ -20,7 +20,8 @@ from testmill.state import _Environment
 from testmill.test import *
 
 
-class TestState(UnitTestSuite):
+@unittest
+class TestState(TestSuite):
 
     def test_set(self):
         env = _Environment()

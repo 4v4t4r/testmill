@@ -27,7 +27,8 @@ from testmill import versioncontrol
 from testmill.versioncontrol import *
 
 
-class TestVersionControl(UnitTestSuite):
+@unittest
+class TestVersionControl(TestSuite):
     """Test suite for the testmill.versioncontrol module."""
 
     # walk_repository()

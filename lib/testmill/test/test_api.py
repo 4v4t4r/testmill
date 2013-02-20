@@ -27,7 +27,8 @@ from testmill.test import *
 from testmill.test import networkblocker
 
 
-class TestAPI(IntegrationTestSuite):
+@integrationtest
+class TestAPI(TestSuite):
     """Test the API client."""
 
     def test_connect(self):

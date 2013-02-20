@@ -25,7 +25,8 @@ from testmill.state import env
 from testmill.test import *
 
 
-class TestSSH(SystemTestSuite):
+@systemtest
+class TestSSH(TestSuite):
     """Test the "ravtest ssh" command."""
 
     @classmethod

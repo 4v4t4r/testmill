@@ -21,7 +21,8 @@ from testmill.state import env
 from testmill.test import *
 
 
-class TestRun(SystemTestSuite):
+@systemtest
+class TestRun(TestSuite):
     """Test the "ravtest run" command."""
 
     def test_run(self):

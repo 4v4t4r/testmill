@@ -24,7 +24,8 @@ from testmill.state import env
 from testmill.test import *
 
 
-class TestPS(SystemTestSuite):
+@systemtest
+class TestPS(TestSuite):
     """Test the "ravtest ps" command."""
 
     @classmethod

@@ -18,7 +18,8 @@ import sphinx
 from testmill.test import *
 
 
-class TestDocs(UnitTestSuite):
+@unittest
+class TestDocs(TestSuite):
 
     def test_build_docs(self):
         docdir = os.path.join(testenv.topdir, 'doc')
