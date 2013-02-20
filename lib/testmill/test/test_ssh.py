@@ -56,10 +56,12 @@ class TestSSH(SystemTestSuite):
         # PTY, and therefore the child will use openssh.
         for vm in self.vms:
             libdir = os.path.join(testenv.topdir, 'lib')
+            env = os.environ.copy()
+            env['PYTHONPATH'] = libdir
             args = ['-mtestmill.main']
             args += get_common_args()
             args += ['-m', 'platformtest.yml', 'ssh', self.appname, vm]
-            child = pexpect.spawn(sys.executable, args)
+            child = pexpect.spawn(sys.executable, args, env=env)
             # Try to get some remote output. The interaction between Unix TTYs,
             # regular expressions, python string escapes, and shell expansions
             # make the 3 lines below the path to the Zen of Unix.
@@ -76,10 +78,12 @@ class TestSSH(SystemTestSuite):
         # child will elect to use Paramiko instead of openssh.
         for vm in self.vms:
             libdir = os.path.join(testenv.topdir, 'lib')
+            env = os.environ.copy()
+            env['PYTHONPATH'] = libdir
             command =  [sys.executable, '-mtestmill.main']
             command += get_common_args()
             command += ['-m', 'platformtest.yml', 'ssh', self.appname, vm]
-            child = subprocess.Popen(command, stdin=subprocess.PIPE,
+            child = subprocess.Popen(command, env=env, stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             script = "echo 'Hello from remote!'\nexit\n"
             stdout, stderr = child.communicate(script)
