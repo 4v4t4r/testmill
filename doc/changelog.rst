@@ -4,6 +4,9 @@ Changelog
 New in version 0.9.11
 ---------------------
 
+* Fix but in which() on Windows. This would prevent first-time
+  users to use TestMill on Windows.
+
 New in version 0.9.10
 ---------------------
 

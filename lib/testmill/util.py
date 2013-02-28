@@ -112,7 +112,7 @@ def _exists(fname):
         _pathext.append('')
         if sys.platform.startswith('win'):
             pathext = os.environ.get('PATHEXT', '')
-            _pathext.append(pathext.split(os.path.pathsep))
+            _pathext.extend(pathext.split(os.path.pathsep))
     for ext in _pathext:
         if os.access(fname + ext, os.X_OK):
             return fname
