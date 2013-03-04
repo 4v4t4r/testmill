@@ -27,6 +27,7 @@ Contents
    introduction
    manifest
    commands
+   fabric
    appendices
    changelog
 
