@@ -103,7 +103,7 @@ def do_ssh(args, env):
     else:
         error.raise_error('Illegal application name: `{0}`.', appname)
 
-    apps = cache.get_applications(project, defname, instance)
+    apps = cache.find_applications(project, defname, instance)
     if len(apps) == 0:
         error.raise_error('No instances of application `{0}` exist.',
                           defname)

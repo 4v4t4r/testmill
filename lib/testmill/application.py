@@ -58,6 +58,14 @@ def start_application(app):
             env.api.start_vm(app, vm)
 
 
+def stop_application(app):
+    """Stop all started VMs in an application."""
+    vms = app['applicationLayer']['vm']
+    for vm in vms:
+        if vm['dynamicMetadata']['state'] == 'STARTED':
+            env.api.stop_vm(app, vm)
+
+
 def get_application_state(app):
     """Return the state of an application.
     
@@ -242,11 +250,14 @@ def create_new_vm(vmdef):
     return vm
 
 
-def create_new_application(appdef):
+def create_new_application(appdef, name_is_template=True):
     """Create a new application based on ``appdef``."""
-    project = env.manifest['project']
-    template = '{0}:{1}'.format(project['name'], appdef['name'])
-    name = util.get_unused_name(template, cache.get_applications())
+    if name_is_template:
+        project = env.manifest['project']
+        template = '{0}:{1}'.format(project['name'], appdef['name'])
+        name = util.get_unused_name(template, cache.get_applications())
+    else:
+        name = appdef['name']
     app = { 'name': name }
     bpname = appdef.get('blueprint')
     if bpname:
@@ -263,10 +274,39 @@ def create_new_application(appdef):
             vms.append(vm)
         app['applicationLayer'] = { 'vm': vms }
         app = env.api.create_application(app)
-    req = { 'prefferedCloud': 'AMAZON' }  # sic.
+    return app
+
+
+def publish_application(app, cloud='AMAZON', region=None):
+    """Publish the application ``app``."""
+    req = { 'prefferedCloud': cloud, 'prefferedRegion': region }  # sic.
     env.api.publish_application(app, req)
     app = cache.get_full_application(app['id'], force_reload=True)
     return app
+
+
+def appdef_from_app(app):
+    """Turn an application back into ``appdef`` format."""
+    appdef = { 'id': app['id'] }
+    appdef['name'] = app['name']
+    appdef['description'] = app['description']
+    vmdefs = appdef['vms'] = []
+    for vm in app['applicationLayer'].get('vm', []):
+        vmdef = { 'id': vm['id'] }
+        vmdef['name'] = vm['name']
+        vmdef['description'] = vm['description']
+        vmdef['smp'] = vm['numCpus']
+        vmdef['memory'] = vm['memorySize']['value'] * \
+                (1024 if vm['memorySize']['unit'] == 'GB' else 1)
+        svcdefs = vmdef['services'] = []
+        for svc in vm.get('suppliedServices', []):
+            svc = svc.get('baseService')
+            if not svc:
+                continue
+            svcdef = { 'name': svc['name'], 'port': svc['portRange'] }
+            svcdefs.append(svcdef)
+        vmdefs.append(vmdef)
+    return appdef
 
 
 def create_or_reuse_application(appdef, force_new):
@@ -282,13 +322,14 @@ def create_or_reuse_application(appdef, force_new):
             start_application(app)
     if app is None:
         app = create_new_application(appdef)
+        app = publish_application(app)
         parts = app['name'].split(':')
         console.info('Created new application `{1}:{2}`.', *parts)
         console.info('Published to {0[cloud]}/{0[regionName]}.', app)
     return app
 
 
-def wait_for_application(app, vms):
+def wait_for_application(app, vms, timeout=None):
     """Wait until an is UP and connectable over ssh."""
     console.start_progressbar(textwrap.dedent("""\
         Waiting until application is ready...
@@ -299,11 +340,28 @@ def wait_for_application(app, vms):
     # need to be fixed to ensure cloud-init has finished before ssh
     # starts up.
     state = get_application_state(app)
-    extra_sleep = 30 if state == 'PUBLISHING' else 0
+    if timeout:
+        timeleft = max(120, timeout)  # anything < 120 does not make sense
+        start = time.time()
+    else:
+        timeleft = None
+    if state == 'PUBLISHING':
+        if timeleft:
+            timeleft -= 30
+        # Fudge factor. When an application is first started up, ssh needs to
+        # create its ssh host keys. In theory this wait should not be necessary
+        # as ssh binds to port 22 after creating the host keys. In practise,
+        # something doesn't quite work our and it is needed.  Needs more
+        # investigation to understand. For now, take the easy way..
+        extra_sleep = 30
+    else:
+        extra_sleep = 0
     console.debug('State {0}, extra sleep {1}.', state, extra_sleep)
-    wait_until_application_is_up(app)
+    wait_until_application_is_up(app, timeleft)
+    if timeleft:
+        timeleft = max(0, timeleft - (time.time()-start))
     app = cache.get_full_application(app['id'])
-    wait_until_application_accepts_ssh(app, vms)
+    wait_until_application_accepts_ssh(app, vms, timeleft)
     console.end_progressbar('DONE')
     app = cache.get_full_application(app['id'])
     time.sleep(extra_sleep)
@@ -338,7 +396,7 @@ def default_application(appname):
     else:
         error.raise_error('Illegal application name: `{0}`.', appname)
 
-    apps = cache.get_applications(project, defname, instance)
+    apps = cache.find_applications(project, defname, instance)
     if len(apps) == 0:
         error.raise_error('No instances of application `{0}` exist.',
                           defname)

@@ -67,7 +67,7 @@ def do_restore(args, env):
     else:
         error.raise_error('Illegal blueprint name: `{0}`.', appname)
 
-    bps = cache.get_blueprints(project, defname, instance)
+    bps = cache.find_blueprints(project, defname, instance)
     if len(bps) == 0:
         error.raise_error('No instances of blueprint `{0}` exist.',
                           defname)

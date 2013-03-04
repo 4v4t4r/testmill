@@ -30,12 +30,17 @@ def get_images():
     return env._images
 
 
-def get_applications(project=None, defname=None, instance=None):
+def get_applications():
     """Return a list of all applications."""
     if not hasattr(env, '_applications'):
         env._applications = env.api.get_applications()
+    return env._applications
+
+
+def find_applications(project=None, defname=None, instance=None):
+    """Find one or more applications."""
     applications = []
-    for app in env._applications:
+    for app in get_applications():
         parts = app.get('name', '').split(':')
         if len(parts) != 3:
             continue
@@ -49,10 +54,15 @@ def get_applications(project=None, defname=None, instance=None):
 
 def get_blueprints(project=None, defname=None, instance=None):
     """Return a list of all blueprints."""
-    blueprints = []
     if not hasattr(env, '_blueprints'):
         env._blueprints = env.api.get_blueprints()
-    for bp in env._blueprints:
+    return env._blueprints
+
+
+def find_blueprints(project=None, defname=None, instance=None):
+    """Find one or more blueprints."""
+    blueprints = []
+    for bp in get_blueprints():
         parts = bp.get('name', '').split(':')
         if len(parts) != 3:
             continue

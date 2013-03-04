@@ -67,11 +67,11 @@ def do_clean(args, env):
         console.info('Project name is `{0}`.', project)
     
     if args.blueprint:
-        objs = cache.get_blueprints(project)
+        objs = cache.find_blueprints(project)
         objs = filter(lambda app: app['state'] == 'DONE', objs)
         what = 'blueprint'
     else:
-        objs = cache.get_applications(project)
+        objs = cache.find_applications(project)
         objs = filter(lambda app: app['totalStartedVms'] == 0, objs)
         what = 'application'
 

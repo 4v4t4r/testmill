@@ -68,10 +68,10 @@ def do_ps(args, env):
         console.info('Project name is `{0}`.', project)
     
     if args.blueprint:
-        apps = cache.get_blueprints(project)
+        apps = cache.find_blueprints(project)
         what = 'blueprint'
     else:
-        apps = cache.get_applications(project)
+        apps = cache.find_applications(project)
         what = 'application'
 
     apps = sorted(apps, key=lambda app: app['name'])

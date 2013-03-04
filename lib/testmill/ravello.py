@@ -403,6 +403,8 @@ class RavelloClient(object):
                 if key not in ('appMetadata', 'applicationLayer'):
                     application['appMetadata'][key] = application[key]
                     del application[key]
+            from testmill import util
+            print(util.prettify(application))
             response = self._make_request('POST', '/instance', application)
             application = response.entity
             for key in list(application['appMetadata']):

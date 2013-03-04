@@ -19,6 +19,9 @@ import sys
 if sys.version_info[0] == 3:
     from io import StringIO
     from configparser import ConfigParser
+    str = str
+
 else:
     from StringIO import StringIO
     from ConfigParser import ConfigParser
+    str = (unicode, str)

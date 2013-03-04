@@ -156,8 +156,8 @@ def percolate_defaults(manifest):
     if language:
         manifest['project']['language'] = language
         del manifest['language']
-    language = manifest['project']['language']
-    langdefs = manifest['languages'].get(language, {})
+    language = manifest.get('project', {}).get('language')
+    langdefs = manifest.get('languages', {}).get(language, {})
     for appdef in manifest['applications']:
         merge(langdefs.get('applications', {}), appdef)
         merge(defaults.get('applications', {}), appdef)
@@ -229,7 +229,8 @@ def check_manifest(manifest):
             validate.validate_node(manifest, path, check)
         except validate.ValidationError as e:
             path = validate.pathref(e[1])
-            error.raise_error('{0}: {1}: {2}', manifest['_filename'], path, e[0])
+            error.raise_error('{0}: {1}: {2}',
+                        manifest.get('_filename', '<dict>'), path, e[0])
 
     check('/project', dict)
     check('/project/name', str)
@@ -252,6 +253,10 @@ def check_manifest(manifest):
     check('/applications/*/vms/*/tasks/*/!name', str)
     check('/applications/*/vms/*/tasks/*/class', str)
     check('/applications/*/vms/*/tasks/*/commands', list)
+    check('/applications/*/vms/*/services', list)
+    check('/applications/*/vms/*/services/*', (int, str, dict))
+    check('/applications/*/vms/*/services/*/!name', str)
+    check('/applications/*/vms/*/services/*/!port', int)
     check('/defaults', dict)
     check('/defaults/vms', dict)
     check('/defaults/vms/tasks', list)
