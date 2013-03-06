@@ -20,6 +20,7 @@ import urlparse
 import threading
 import pickle
 
+from nose import SkipTest
 from nose.tools import assert_raises
 from testmill import RavelloClient, RavelloError
 from testmill.state import env
@@ -117,6 +118,20 @@ class TestAPI(TestSuite):
     def test_hello(self):
         env.api.hello()
 
+    def test_get_image(self):
+        images = env.api.get_images()
+        if not images:
+            raise SkipTest('No images present.')
+        imgid = images[0]['id']
+        image = env.api.get_image(imgid)
+        assert isinstance(image, dict)
+        assert 'id' in image
+        assert isinstance(image['id'], int)
+
+    def test_get_image_nonexistent(self):
+        image = env.api.get_image(0)
+        assert image is None
+
     def test_get_images(self):
         images = env.api.get_images()
         assert len(images) > 0
@@ -125,5 +140,47 @@ class TestAPI(TestSuite):
             assert isinstance(image, dict)
             assert 'id' in image
             assert isinstance(image['id'], int)
-            assert 'name' in image
-            assert isinstance(image['name'], (str, unicode))
+
+    def test_get_application(self):
+        applications = env.api.get_applications()
+        if not applications:
+            raise SkipTest('No applications present.')
+        appid = applications[0]['id']
+        application = env.api.get_application(appid)
+        assert isinstance(application, dict)
+        assert 'id' in application
+        assert isinstance(application['id'], int)
+
+    def test_get_application_nonexistent(self):
+        application = env.api.get_application(0)
+        assert application is None
+
+    def test_get_applications(self):
+        applications = env.api.get_applications()
+        assert isinstance(applications, list)
+        for application in applications:
+            assert isinstance(application, dict)
+            assert 'id' in application
+            assert isinstance(application['id'], int)
+
+    def test_get_blueprint(self):
+        blueprints = env.api.get_blueprints()
+        if not blueprints:
+            raise SkipTest('No blueprints present.')
+        bpid = blueprints[0]['id']
+        blueprint = env.api.get_blueprint(bpid)
+        assert isinstance(blueprint, dict)
+        assert 'id' in blueprint
+        assert isinstance(blueprint['id'], int)
+
+    def test_get_blueprint_nonexistent(self):
+        blueprint = env.api.get_blueprint(0)
+        assert blueprint is None
+
+    def test_get_blueprints(self):
+        blueprints = env.api.get_blueprints()
+        assert isinstance(blueprints, list)
+        for blueprint in blueprints:
+            assert isinstance(blueprint, dict)
+            assert 'id' in blueprint
+            assert isinstance(blueprint['id'], int)

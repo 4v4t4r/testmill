@@ -81,9 +81,6 @@ class RavelloClient(object):
     default_timeout = 30
     default_url = 'https://cloud.ravellosystems.com/services'
 
-    ok_codes = set((httplib.OK, httplib.CREATED, httplib.ACCEPTED,
-                    httplib.NO_CONTENT))
-
     def __init__(self, username=None, password=None, service_url=None,
                  token=None, retries=None, timeout=None):
         """Create a new connection."""
@@ -194,7 +191,23 @@ class RavelloClient(object):
         ctype = response.getheader('Content-Type')
         log.debug('API response: {0}, {1} bytes, ({2})' \
                 .format(response.status, len(body), ctype))
-        if response.status not in self.ok_codes:
+        if 200 <= response.status < 300:
+            if ctype == 'application/json':
+                try:
+                    parsed = json.loads(body)
+                except Exception:
+                    log.error('response body contains invalid JSON')
+                    return
+                response.entity = parsed
+            else:
+                response.entity = None
+        elif response.status == 404 or (response.status == 500 and
+                ('not found' in response.getheader('error-message', '') or
+                ('not exist' in response.getheader('error-message', '')))):
+            # The second part of the clause above is completely bogus but
+            # we need it until our API returns a 404 for a not found error.
+            response.entity = None
+        else:
             error = response.getheader('error-code')
             message = response.getheader('error-message', '')
             if error:
@@ -203,15 +216,6 @@ class RavelloClient(object):
                 message = 'API call failed with {0} {1}'\
                                 .format(response.status, response.reason)
             raise RavelloError(message)
-        if ctype == 'application/json':
-            try:
-                parsed = json.loads(body)
-            except Exception:
-                log.error('response body contains invalid JSON')
-                return
-            response.entity = parsed
-        else:
-            response.entity = None
         return response
 
     def connect(self, url=None):
@@ -358,6 +362,8 @@ class RavelloClient(object):
     def get_image(self, id):
         """Return a single image."""
         response = self._make_request('GET', '/images/%s' % id)
+        if not response.entity:
+            return
         return response.entity['value']
 
     def get_images(self):
@@ -376,6 +382,8 @@ class RavelloClient(object):
     def get_application(self, id):
         """Get a single application."""
         response = self._make_request('GET', '/instance/%s' % id)
+        if not response.entity:
+            return
         app = response.entity
         # TODO: does it make sense to have "appMetadata" be the "real"
         # application and put it at the top-level?
@@ -403,8 +411,6 @@ class RavelloClient(object):
                 if key not in ('appMetadata', 'applicationLayer'):
                     application['appMetadata'][key] = application[key]
                     del application[key]
-            from testmill import util
-            print(util.prettify(application))
             response = self._make_request('POST', '/instance', application)
             application = response.entity
             for key in list(application['appMetadata']):
@@ -440,6 +446,8 @@ class RavelloClient(object):
     def get_blueprint(self, id):
         """Get a single blueprint."""
         response = self._make_request('GET', '/blueprint/%s' % id)
+        if not response.entity:
+            return
         bp = response.entity
         for key in list(bp['appMetadata']):
             bp[key] = bp['appMetadata'][key]
