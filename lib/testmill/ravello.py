@@ -432,7 +432,7 @@ class RavelloClient(object):
 
     def stop_vm(self, application, vm):
         """Stop a virtual machine."""
-        url = '/deployment/app/%s/vm/%s/stop' % (application['id'], vm['id'])
+        url = '/deployment/app/%s/vm/%s/stopguest' % (application['id'], vm['id'])
         self._make_request('POST', url)
 
     # Blueprints
