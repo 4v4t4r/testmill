@@ -50,17 +50,18 @@ import argparse
 from functools import wraps
 
 from testmill.state import env
-from testmill import (cache, error, login, keypair, ravello,
+from testmill import (cache, error, login, keypair, ravello, util,
                       application, main, compat, manifest, console)
 
 from fabric import api as fab
 import fabric.utils
 
 
-__all__ = ['new_application_name', 'new_blueprint_name', 'get_application',
+__all__ = ['new_application_name', 'get_application', 'get_applications',
            'create_application', 'start_application', 'stop_application',
-           'delete_application', 'create_blueprint', 'lookup',
-           'reverse_lookup', 'hosts', 'only_on']
+           'remove_application', 'new_blueprint_name', 'get_blueprint',
+           'get_blueprints', 'create_blueprint', 'remove_blueprint',
+           'lookup', 'reverse_lookup', 'hosts', 'only_on']
 
 
 def _setup_testmill():
@@ -74,25 +75,31 @@ def _setup_testmill():
     env.manifest = None
     env.debug = fab.output.debug
     env.always_confirm = False
-    if not hasattr(env, 'api'):
-        main.setup_logging()
-        if not hasattr(fab.env, 'ravello_api_user'):
-            msg = 'Please enter your Ravello username: '
-            fab.env.ravello_api_user = console.prompt(msg)
-        env.username = fab.env.ravello_api_user
-        if not hasattr(fab.env, 'ravello_api_password'):
-            msg = 'Please enter your Ravello password: '
-            fab.env.ravello_api_password = console.getpass(msg)
-        env.password = fab.env.ravello_api_password
-        if not hasattr(fab.env, 'ravello_api_url'):
-            fab.env.ravello_api_url = None
-        env.service_url = fab.env.ravello_api_url
-        env.api = ravello.RavelloClient(env.username, env.password, env.service_url)
-        env.args = argparse.Namespace()
     if not hasattr(fab.env, 'ravello_user'):
         fab.env.ravello_user = 'ravello'
-    if env.api.connection is None:
-        login.default_login()
+    if not hasattr(fab.env, 'ravello_api_user'):
+        fab.env.ravello_api_user = None
+    if not hasattr(fab.env, 'ravello_api_password'):
+        fab.env.ravello_api_password = None
+    if not hasattr(fab.env, 'ravello_api_url'):
+        fab.env.ravello_api_url = None
+    if not hasattr(env, 'api'):
+        main.setup_logging()
+        env.service_url = fab.env.ravello_api_url
+        env.api = ravello.RavelloClient(service_url=env.service_url)
+        try:
+            login.token_login()
+        except error.ProgramError:
+            if not fab.env.ravello_api_user:
+                msg = 'Please enter your Ravello username: '
+                fab.env.ravello_api_user = console.prompt(msg)
+            env.username = fab.env.ravello_api_user
+            if not fab.env.ravello_api_password:
+                msg = 'Please enter your Ravello password: '
+                fab.env.ravello_api_password = console.getpass(msg)
+            env.password = fab.env.ravello_api_password
+            login.password_login()
+            login.store_token()
     if not hasattr(env, 'public_key'):
         keypair.default_keypair()
         key_filename = env.private_key_file
@@ -138,20 +145,7 @@ def new_application_name(template='fabric'):
     The argument *template* specifies the base name, to which a unique numeric
     suffix is appended.
     """
-    name = util.get_unused_name(template, cache.get_applications())
-    return name
-
-
-@with_fabric
-def new_blueprint_name(template='fabric'):
-    """new_blueprint_name(template='fabric')
-
-    Return a new unique blueprint name.
-
-    The argument *template* specifies the base name, to which a unique numeric
-    suffix is appended.
-    """
-    name = util.get_unused_name(template, cache.get_blueprints())
+    name = application.new_application_name(template)
     return name
 
 
@@ -172,8 +166,20 @@ def get_application(name):
     app = cache.get_application(name=name)
     if app is None:
         return
-    app = cache.get_full_application(app['id'])
     return application.appdef_from_app(app)
+
+
+@with_fabric
+def get_applications():
+    """get_applications()
+
+    Return a list containing all applications.
+    """
+    applications = []
+    for app in cache.get_applications():
+        app = cache.get_application(app['id'])
+        applications.append(application.appdef_from_app(app))
+    return applications
 
 
 @with_fabric
@@ -211,7 +217,9 @@ def create_application(name=None, blueprint=None, vms=None, cloud=None,
     else:
         if name is None:
             name = new_application_name()
-    appdef = { 'name': name, 'vms': vms }
+    appdef = { 'name': name }
+    if vms:
+        appdef['vms'] = vms
     if blueprint:
         appdef['blueprint'] = blueprint
     manif = { 'applications': [appdef],
@@ -219,9 +227,8 @@ def create_application(name=None, blueprint=None, vms=None, cloud=None,
     manifest.check_manifest(manif)
     manifest.percolate_defaults(manif)
     manifest.check_manifest_entities(manif)
-    application.create_new_application(appdef, False)
-    env.api.publish_application(app, cloud, region)
-    app = cache.get_full_application(app['id'], force_reload=True)
+    app = application.create_new_application(appdef, False)
+    app = application.publish_application(app, cloud, region)
     if wait:
         vms = set((vm['name'] for vm in app['applicationLayer']['vm']))
         with env.let(quiet=not show_progress):
@@ -257,19 +264,18 @@ def start_application(name, wait=True, show_progress=True, timeout=1200):
     app = cache.get_application(name=name)
     if app is None:
         error.raise_error("Application `{0}` does not exist.", name)
-    app = cache.get_full_application(app['id'])
-    application.start_application(app)
+    app = application.start_application(app)
     if wait:
         state = application.get_application_state(app)
         if state not in application.vm_reuse_states:
-            error.raise_error("Cannot start application in state '{0}'.", state)
+            error.raise_error("Cannot wait for app in state '{0}'.", state)
         vms = set((vm['name'] for vm in app['applicationLayer']['vm']))
         with env.let(quiet=not show_progress):
             application.wait_for_application(app, vms, timeout)
 
 
 @with_fabric
-def stop_application(name):
+def stop_application(name, wait=True, timeout=300):
     """stop_application(name)
 
     Stop an application with name *name*.
@@ -285,13 +291,17 @@ def stop_application(name):
     app = cache.get_application(name=name)
     if app is None:
         error.raise_error("Application `{0}` does not exist.", name)
-    app = cache.get_full_application(app['id'])
-    application.stop_application(app)
+    app = application.stop_application(app)
+    if wait:
+        state = application.get_application_state(app)
+        if state not in ('STARTED', 'STOPPING', 'STOPPED'):
+            error.raise_error("Cannot wait for app in state '{0}',", state)
+        application.wait_until_application_is_in_state(app, 'STOPPED', timeout)
 
 
 @with_fabric
-def delete_application(name):
-    """delete_application(name)
+def remove_application(name):
+    """remove_application(name)
 
     Delete the application with name *name*.
 
@@ -300,17 +310,59 @@ def delete_application(name):
     If the application has running VMs, those will be uncleanly shutdown.
 
     Deleting an application destroys all data relating to the application
-    including its VMs and their disks. This operational cannot be undone.
+    including its VMs and their disks. This operation cannot be undone.
     """
     app = cache.get_application(name=name)
     if app is None:
         return
-    env.api.delete_application(app)
+    application.remove_application(app)
 
 
 @with_fabric
-def create_blueprint(app, name=None):
-    """create_blueprint(app, name=None)
+def new_blueprint_name(template='fabric'):
+    """new_blueprint_name(template='fabric')
+
+    Return a new unique blueprint name.
+
+    The argument *template* specifies the base name, to which a unique numeric
+    suffix is appended.
+    """
+    name = application.new_blueprint_name(template)
+    return name
+
+
+@with_fabric
+def get_blueprint(name):
+    """get_blueprint(name)
+
+    Lookup the blueprint *name*.
+
+    If the blueprint exists, return the blueprint definition for it. The
+    format is the same as the application definition that created the blueprint
+    with some operational fields removed.
+    """
+    bp = cache.get_blueprint(name=name)
+    if not bp:
+        return
+    return application.appdef_from_app(bp)
+
+
+@with_fabric
+def get_blueprints():
+    """get_blueprints()
+
+    Return a list of all blueprints.
+    """
+    blueprints = []
+    for bp in cache.get_blueprints():
+        bp = cache.get_blueprint(bp['id'])
+        blueprints.append(application.appdef_from_app(bp))
+    return blueprints
+
+
+@with_fabric
+def create_blueprint(name, bpname=None, wait=True):
+    """create_blueprint(name, bpname=None)
 
     Create a blueprint from an application.
 
@@ -331,9 +383,28 @@ def create_blueprint(app, name=None):
                           'Can only save when STOPPED or STARTED.',
                           name, state)
     if bpname is None:
-        bpname = get_blueprint_name('bp-{0}'.format(name))
-    bp = env.api.create_blueprint(bpname, app)
+        bpname = new_blueprint_name('bp-{0}'.format(name))
+    bp = application.create_blueprint(bpname, app)
+    if wait:
+        bp = application.wait_until_blueprint_is_in_state(bp, 'DONE')
     return application.appdef_from_app(bp)
+
+
+@with_fabric
+def remove_blueprint(name):
+    """remove_blueprint(name)
+
+    Delete a blueprint.
+
+    It is not an error to delete a blueprint that does not exist.
+    
+    Deleting a blueprint destroys all data relating to the blueprint
+    including its VMs and their disks. This operation cannot be undone.
+    """
+    bp = cache.get_blueprint(name=name)
+    if not bp:
+        return
+    application.remove_blueprint(bp)
 
 
 @with_fabric
@@ -356,7 +427,7 @@ def lookup(appname, *vms):
         error.raise_error("Application `{0}` does not exist.", appname)
     if isinstance(vms, compat.str):
         vms = [vms]
-    app = cache.get_full_application(app['id'])
+    app = cache.get_application(app['id'])
     hosts = []
     for vm in app['applicationLayer'].get('vm', []):
         if vms and vm['name'] not in vms:
@@ -394,7 +465,7 @@ def reverse_lookup(host):
     # without poking under the hood of this API, there is no way of getting a
     # host string without going the application ending up in the case. So
     # therefore this should be fine.
-    for app in env._full_applications.values():
+    for app in env._applications_byid.values():
         for vm in app['applicationLayer'].get('vm', {}):
             addr = vm.get('dynamicMetadata', {}).get('externalIp')
             if addr == host:

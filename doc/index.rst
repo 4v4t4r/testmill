@@ -1,6 +1,8 @@
 Welcome to Ravello TestMill
 ===========================
 
+.. default-domain:: py
+
 Ravello TestMill is an orchestration tool to build single- and multi-VM
 application environments on the fly from a textual description and run
 workflows in them. The focus is on providing clean and high-fidelity

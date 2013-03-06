@@ -87,7 +87,7 @@ def do_ps(args, env):
             console.writeln("== Project: `{0}`", parts[0])
             current_project = parts[0]
         if args.full and not args.blueprint:
-            app = cache.get_full_application(app['id'])
+            app = cache.get_application(app['id'])
 
         cloud = app.get('cloud')
         region = app.get('regionName')

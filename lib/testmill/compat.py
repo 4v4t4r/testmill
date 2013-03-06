@@ -19,7 +19,7 @@ import sys
 if sys.version_info[0] == 3:
     from io import StringIO
     from configparser import ConfigParser
-    str = str
+    str = (str,)
 
 else:
     from StringIO import StringIO

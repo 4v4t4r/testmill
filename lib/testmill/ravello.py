@@ -202,8 +202,9 @@ class RavelloClient(object):
             else:
                 response.entity = None
         elif response.status == 404 or (response.status == 500 and
-                ('not found' in response.getheader('error-message', '') or
-                ('not exist' in response.getheader('error-message', '')))):
+                ('not found' in response.getheader('error-message', '')) or
+                ('not exist' in response.getheader('error-message', '')) or
+                ('was deleted' in response.getheader('error-message', ''))):
             # The second part of the clause above is completely bogus but
             # we need it until our API returns a 404 for a not found error.
             response.entity = None

@@ -168,12 +168,15 @@ def create_environment(args):
 def setup_logging():
     """Set up logging."""
     logger = logging.getLogger('testmill')
+    if getattr(logger, '_testmill_configured', False):
+        return
     logger.setLevel(logging.DEBUG if env.debug and env.verbose
                     else logging.INFO)
     handler = logging.StreamHandler(console)
     template = '%(levelname)s %(name)s: %(message)s'
     handler.setFormatter(logging.Formatter(template))
     logger.addHandler(handler)
+    logger._testmill_configured = True
 
 
 def main(argv=None):

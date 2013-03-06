@@ -112,7 +112,7 @@ def do_ssh(args, env):
                           'Use `ravtest ps` to list the instances and then\n'
                           'specify the application with its instance id.',
                           defname)
-    app = cache.get_full_application(apps[0]['id'])
+    app = cache.get_application(apps[0]['id'])
     appname = app['name']
     _, _, instance = appname.split(':')
 

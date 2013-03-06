@@ -6,6 +6,8 @@ New in version 0.9.11
 
 * Fix but in which() on Windows. This would prevent first-time
   users to use TestMill on Windows.
+* Added an interface that makes it easy to use TestMill as a
+  library from Fabric.
 
 New in version 0.9.10
 ---------------------

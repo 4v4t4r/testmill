@@ -76,7 +76,7 @@ def do_restore(args, env):
                           'Use `ravtest ps -b` to list the blueprints and then\n'
                           'specify the blueprint with its instance id.',
                           defname)
-    bp = cache.get_full_blueprint(bps[0]['id'])
+    bp = cache.get_blueprint(bps[0]['id'])
     project, defname, instance = bp['name'].split(':')
 
     template = '{0}:{1}'.format(project, defname)
@@ -87,7 +87,7 @@ def do_restore(args, env):
 
     app = { 'name': appname }
     app = env.api.create_application(app, bp)
-    app = cache.get_full_application(app['id'])
+    app = cache.get_application(app['id'])
     for vm in application.get_vms(app):
         vm.setdefault('customVmConfigurationData', {})
         vm['customVmConfigurationData']['keypair'] = env.public_key

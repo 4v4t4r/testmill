@@ -127,7 +127,12 @@ def rmtree(dname):
     # never fail. In platforms with uncommon temp directories this
     # check may result in a temp directory not being cleaned up.
     if paranoia_ok(dname):
-        shutil.rmtree(dname)
+        try:
+            shutil.rmtree(dname)
+        except OSError:
+            # On Windows a WindowsError is raised when files are
+            # still open
+            pass
 
 
 def parse_ps_output(output):
