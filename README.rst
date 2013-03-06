@@ -14,4 +14,7 @@ See the `TestMill Manual`_ for more information.
 Copyright (c) 2012-2013 Ravello Systems, Inc.  Available as Open Source
 Software under the Apache 2.0 license.
 
+For questions, comments or bug reports, please contact geertj@gmail.com or
+leave a ticket on Github.
+
 .. _`TestMill Manual`: https://testmill.readthedocs.org/en/latest/
