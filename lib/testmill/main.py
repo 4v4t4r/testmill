@@ -181,6 +181,10 @@ def setup_logging():
 
 def main(argv=None):
     """The "ravtest" main entry point."""
+    if sys.platform.startswith('win'):
+        console.error('Windows is not currently supported by "ravtest".\n'
+                      'Please use the Fabric front-end.')
+        error.exit(1)
     parser = create_parser()
     args = parse_args(parser, argv)
     create_environment(args)

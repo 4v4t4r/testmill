@@ -7,6 +7,8 @@ Installation Instructions
 
 This section contains generic installation instructions. See the bottom of this
 section for specific instruction on installing on Linux, Mac and Windows.
+(NOTE: Windows is only partially supported, see the note in
+:ref:`windows-installation`).
 
 TestMill is written in the Python programming language, and has the following
 dependencies:

@@ -35,7 +35,6 @@ version_info = {
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: POSIX',
         'Operating System :: MacOS :: MacOS X',
-        'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7'
     ]

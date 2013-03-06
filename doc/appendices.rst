@@ -73,6 +73,13 @@ to compile it yourself. This requires a C compiler.
 Installing on Windows
 ---------------------
 
+.. note::
+
+    Windows is currently only partially supported. It will work when using
+    Fabric as a front-end, but not using ``ravtest``. This is due to `a bug
+    <https://github.com/fabric/fabric/issues/489>`_ in Fabric's use of the
+    ``multiprocessing`` module that is required for ``@parallel`` tasks.
+
 Windows is the most complicated platform to install TestMill on. This is
 because Windows neither provides Python nor a C compiler by default. The C
 compiler is needed because of the dependency on PyCrypto (via Fabric and
