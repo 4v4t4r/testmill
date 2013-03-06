@@ -17,7 +17,7 @@ from testmill.test import sudo
 
 
 def have_blocker():
-    return sys.platform in ('darwin', 'linux2')
+    return sys.platform in ('darwin', 'linux2', 'linux3')
 
 
 class block_ip(object):
@@ -32,16 +32,16 @@ class block_ip(object):
         # different platforms. For example a local ICMP unreachable may
         # be generated or existing connections may not be impacted.
         if sys.platform == 'darwin':
-            command = 'ipfw -q add 2000 drop tcp from {} to any' \
+            command = 'ipfw -q add 2000 drop tcp from {0} to any' \
                         .format(self.ipaddr)
-        elif sys.platform == 'linux2':
-            command = 'iptables -I INPUT 1 -s {} -j DROP' \
+        elif sys.platform in ('linux2', 'linux3'):
+            command = 'iptables -I INPUT 1 -s {0} -j DROP' \
                         .format(self.ipaddr)
         sudo.run_with_sudo(command.split())
 
     def __exit__(self, *exc):
         if sys.platform == 'darwin':
             command = 'ipfw -q del 2000'
-        elif sys.platform == 'linux2':
+        elif sys.platform in ('linux2', 'linux3'):
             command = 'iptables -D INPUT 1'
         sudo.run_with_sudo(command.split()) 

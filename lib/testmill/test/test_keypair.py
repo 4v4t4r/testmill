@@ -43,10 +43,10 @@ class TestKeypair(TestSuite):
 
     def test_create_keypair_with_api(self):
         tmphome = tempdir()
-        with mock.patch('testmill.util.get_config_dir', lambda: tmphome), \
-                    environ(PATH=''):
-            assert not util.which('ssh-keygen')
-            keypair.create_keypair()
+        with mock.patch('testmill.util.get_config_dir', lambda: tmphome):
+            with environ(PATH=''):
+                assert not util.which('ssh-keygen')
+                keypair.create_keypair()
         privkey = os.path.join(tmphome, 'id_ravello')
         pubkey = os.path.join(tmphome, 'id_ravello.pub')
         st = os.stat(privkey)

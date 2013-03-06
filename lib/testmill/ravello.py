@@ -71,7 +71,7 @@ def should_retry(exc):
     elif isinstance(exc, ssl.SSLError):
         # XXX: This is not a great way to check for a timeout.
         # However, e.errno is unset...
-        return 'time' in exc.message
+        return 'time' in exc[0]
     return False
 
 def idempotent(method):
@@ -160,7 +160,7 @@ class RavelloClient(object):
                 response = self.connection.getresponse()
                 response.body = response.read()
                 t2 = time.time()
-                log.debug('got response in {:.2f} secs'.format(t2-t1))
+                log.debug('got response in {0:.2f} secs'.format(t2-t1))
             except Exception as error:
                 self.close()
                 if not should_retry(error) or not idempotent(method):
@@ -279,7 +279,7 @@ class RavelloClient(object):
         log = self.logger
         if self.username:
             log.debug('performing a new login')
-            auth = b'{0}:{1}'.format(self.username, self.password)
+            auth = '{0}:{1}'.format(self.username, self.password)
             auth = auth.encode('base64')
             headers = [('Authorization', 'Basic %s' % auth)]
             response = self._make_request('POST', '/login', headers=headers)
@@ -434,7 +434,7 @@ class RavelloClient(object):
 
     def remove_application(self, application):
         """Remove an application."""
-        url = '/instance/{}'.format(application['id'])
+        url = '/instance/{0}'.format(application['id'])
         self._make_request('DELETE', url)
 
     # VMs
@@ -482,5 +482,5 @@ class RavelloClient(object):
 
     def remove_blueprint(self, blueprint):
         """Remove a blueprint."""
-        url = '/blueprint/{}'.format(blueprint['id'])
+        url = '/blueprint/{0}'.format(blueprint['id'])
         self._make_request('DELETE', url)

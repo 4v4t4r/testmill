@@ -77,7 +77,7 @@ class TestExamples(TestSuite):
                 break
         assert basesvc['name'].startswith('http')
         assert status == 0
-        url = 'http://{}:{}/FrontPage'.format(ipaddr, port)
+        url = 'http://{0}:{1}/FrontPage'.format(ipaddr, port)
         fin = urllib.urlopen(url)
         page = fin.read()
         fin.close()

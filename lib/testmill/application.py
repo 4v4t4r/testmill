@@ -311,7 +311,7 @@ def get_new_mac():
     env._mac_base += 1
     if (env._mac_base & 0xffffff) == 0xffffff:
         env._mac_base = _ravello_base
-    parts = ['{:02X}'.format((mac >> ((5-i)*8)) & 0xff) for i in range(6)]
+    parts = ['{0:02X}'.format((mac >> ((5-i)*8)) & 0xff) for i in range(6)]
     mac = ':'.join(parts)
     return mac
 

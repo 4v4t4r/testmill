@@ -32,16 +32,16 @@ def load_keypair():
     except OSError:
         return
     if not stat.S_ISREG(st.st_mode):
-        error.raise_error("Private key {} is not a regular file.", pivname)
+        error.raise_error("Private key {0} is not a regular file.", pivname)
     pubname = privname + '.pub'
     try:
         st = os.stat(pubname)
     except OSError:
         st = None
     if st is None:
-        error.raise_error("Public key {} does not exist.", pubname)
+        error.raise_error("Public key {0} does not exist.", pubname)
     elif not stat.S_ISREG(st.st_mode):
-        error.raise_error("Public key {} is not a regular file.", pubname)
+        error.raise_error("Public key {0} is not a regular file.", pubname)
     with file(pubname) as fin:
         pubkey = fin.read()
     keyparts = pubkey.strip().split()
@@ -69,7 +69,7 @@ def create_keypair():
             subprocess.call(['ssh-keygen', '-q', '-t', 'rsa', '-C', keyname,
                              '-b', '2048', '-N', '', '-f', privname])
         except subprocess.CalledProcessError as e:
-            error.raise_error('ssh-keygen returned with error status {}',
+            error.raise_error('ssh-keygen returned with error status {0}',
                               e.returncode)
         with file(pubname) as fin:
             pubkey = fin.read()

@@ -35,7 +35,7 @@ class TestRestore(TestSuite):
             if status != 0:
                 raise SkipTest('Could not start platformtest app.')
             project, defname, instance = env.application['name'].split(':')
-            appname = '{}:{}'.format(defname, instance)
+            appname = '{0}:{1}'.format(defname, instance)
             vms = [vm['name'] for vm in env.appdef['vms']]
         cls.appname = appname
         args = get_common_args()
@@ -45,7 +45,7 @@ class TestRestore(TestSuite):
             if status != 0:
                 raise SkipTest('Could not create blueprint.')
             project, defname, instance = env.blueprint['name'].split(':')
-            bpname = '{}:{}'.format(defname, instance)
+            bpname = '{0}:{1}'.format(defname, instance)
         cls.bpname = bpname
 
     def test_restore(self):
