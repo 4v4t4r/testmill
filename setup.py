@@ -37,9 +37,7 @@ version_info = {
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.2',
-        'Programming Language :: Python :: 3.3'
+        'Programming Language :: Python :: 2.7'
     ]
 }
 
@@ -50,7 +48,7 @@ def update_version():
     """Update the _version.py file."""
     fname = os.path.join('.', 'lib', 'testmill', '_version.py')
     try:
-        with file(fname) as fin:
+        with open(fname) as fin:
             current = fin.read()
     except IOError:
         current = None
@@ -62,7 +60,7 @@ def update_version():
     if current == new:
         return
     tmpname = '{0}.{1}-tmp'.format(fname, os.getpid())
-    with file(tmpname, 'w') as fout:
+    with open(tmpname, 'w') as fout:
         fout.write(new)
     os.rename(tmpname, fname)
     print('Updated _version.py')
@@ -82,14 +80,14 @@ def update_manifest():
     lines = ['include {0}\n'.format(fname)for fname in files]
     new = ''.join(sorted(lines))
     try:
-        with file('MANIFEST.in', 'r') as fin:
+        with open('MANIFEST.in', 'r') as fin:
             current = fin.read()
     except IOError:
         current = None
     if new == current:
         return
     tmpname = 'MANIFEST.in.{0}-tmp'.format(os.getpid())
-    with file(tmpname, 'w') as fout:
+    with open(tmpname, 'w') as fout:
         fout.write(new)
     os.rename(tmpname, 'MANIFEST.in')
     print('Updated MANIFEST.in')

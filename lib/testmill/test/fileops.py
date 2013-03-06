@@ -46,7 +46,7 @@ class mkdir(object):
 
 
 def mkfile(fname, contents=''):
-    with file(fname, 'w') as fout:
+    with open(fname, 'w') as fout:
         fout.write(contents)
 
 touch = mkfile

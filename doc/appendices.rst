@@ -16,8 +16,8 @@ Installing on Linux is relatively straightforward. The instructions below are
 routinely tested in Ubuntu and Fedora, and should work on other Linux variants
 as well.
 
-Your distribution should provide a Python version 2.6, 2.7, 3.2 or 3.3. Most
-Linux distributions today provide one of these versions. However,
+Your distribution should provide a Python version 2.6 or 2.7. Most Linux
+distributions today provide one of these versions. However,
 RHEL/CentOS/Scientific Linux version 5 is the notable exception. These
 distributions include Python 2.5 which is too old to run TestMill. To find your
 your Python version, issue the command ``python -V`` on the command line.

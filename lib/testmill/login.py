@@ -53,7 +53,7 @@ def store_token():
         ftok.write(env.api._cookie)
         ftok.write('\n')
     if hasattr(os, 'chmod'):
-        os.chmod(tokname, 0600)
+        os.chmod(tokname, 0o600)
 
 
 def remove_token():

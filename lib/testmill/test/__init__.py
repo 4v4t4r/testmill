@@ -19,7 +19,6 @@ import shutil
 import argparse
 
 from nose import SkipTest
-from testmill import main
 from testmill.ravello import RavelloClient
 from testmill.state import env, _Environment
 
@@ -184,6 +183,24 @@ class environ(object):
         self.restore.clear()
 
 
+# This is a copy of main.create_environment(). This allows us
+# to run unittests and some integration tests already on Py3k.
+# (Fabric doesn't yet support Py3k)
+
+def create_environment(args):
+    """Set up the global environment."""
+    env.username = args.user
+    env.password = args.password
+    env.service_url = args.service_url
+    env.quiet = args.quiet
+    env.verbose = args.verbose
+    env.manifest = args.manifest
+    env.debug = args.debug
+    env.always_confirm = args.yes
+    env.args = args
+    env.api = RavelloClient(env.username, env.password, env.service_url)
+
+
 class TestSuite(object):
     """Base for test suites."""
 
@@ -212,7 +229,7 @@ class TestSuite(object):
                         manifest = None,
                         quiet = False, verbose=True,
                         debug = True, yes = False)
-            main.create_environment(args)
+            create_environment(args)
             env.api._login()
 
     def teardown(self):

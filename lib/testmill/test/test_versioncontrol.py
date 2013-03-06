@@ -97,7 +97,7 @@ class TestVersionControl(TestSuite):
 
     def test_parse_gitignore_stream(self):
         touch('.gitignore', self.gitignore)
-        with file('.gitignore') as fin:
+        with open('.gitignore') as fin:
             parsed = versioncontrol.parse_gitignore(fin)
         assert len(parsed) == 9
 

@@ -14,9 +14,9 @@
 
 from __future__ import absolute_import, print_function
 
+import sys
 import time
 import socket
-import urlparse
 import threading
 import pickle
 
@@ -26,6 +26,11 @@ from testmill import RavelloClient, RavelloError
 from testmill.state import env
 from testmill.test import *
 from testmill.test import networkblocker
+
+if sys.version_info[0] == 2:
+    import urlparse
+else:
+    from urllib import parse as urlparse
 
 
 @integrationtest

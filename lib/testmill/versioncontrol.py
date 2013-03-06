@@ -160,7 +160,7 @@ def _walk_repository(repodir, ignore_file=None, parse_ignore=None,
             pass
         else:
             if stat.S_ISREG(st.st_mode):
-                with file(fullname) as fin:
+                with open(fullname) as fin:
                     parsed_ignore_file = parse_ignore(fin)
 
     path.append(None)

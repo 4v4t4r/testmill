@@ -13,14 +13,21 @@
 # limitations under the License.
 
 import os
+import sys
 import json
 import time
 import struct
 import socket
-import urlparse
-import httplib
 import logging
 import ssl
+
+if sys.version_info[0] == 2:
+    import httplib
+    import urlparse
+else:
+    from urllib import parse as urlparse
+    from http import client as httplib
+
 
 __all__ = ('random_luid', 'update_luids', 'RavelloError', 'RavelloClient')
 
@@ -272,7 +279,7 @@ class RavelloClient(object):
         log = self.logger
         if self.username:
             log.debug('performing a new login')
-            auth = '%s:%s' % (self.username, self.password)
+            auth = b'{0}:{1}'.format(self.username, self.password)
             auth = auth.encode('base64')
             headers = [('Authorization', 'Basic %s' % auth)]
             response = self._make_request('POST', '/login', headers=headers)
