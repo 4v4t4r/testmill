@@ -73,6 +73,11 @@ def update_manifest():
     # than creating a MANIFEST.in where every line just includes one file.
     # Unfortunately, setuptools/distribute do not support this (distutils
     # does).
+    gitdir = os.path.join('.', '.git')
+    try:
+        st = os.stat(gitdir)
+    except OSError:
+        return
     cmd = subprocess.Popen(['git', 'ls-tree', '-r', 'master', '--name-only'],
                            stdout=subprocess.PIPE)
     stdout, _ = cmd.communicate()
