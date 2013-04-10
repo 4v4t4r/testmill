@@ -51,7 +51,7 @@ class TestSave(TestSuite):
         assert blueprint['id'] == env.blueprint['id']
         assert blueprint['name'] == env.blueprint['name']
         assert blueprint['state'] in ('PENDING', 'SAVING', 'DONE')
-        assert len(blueprint['applicationLayer']['vm']) == len(self.vms)
+        assert len(blueprint['vms']) == len(self.vms)
 
     @classmethod
     def teardown_class(cls):

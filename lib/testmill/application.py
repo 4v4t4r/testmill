@@ -60,8 +60,7 @@ def combine_states(state1, state2, ordering):
 
 def start_application(app):
     """Start up all stopped VMs in an application."""
-    vms = app['applicationLayer']['vm']
-    for vm in vms:
+    for vm in app['vms']:
         if vm['dynamicMetadata']['state'] == 'STOPPED':
             env.api.start_vm(app, vm)
     app = cache.get_application(app['id'], force_reload=True)
@@ -70,8 +69,7 @@ def start_application(app):
 
 def stop_application(app):
     """Stop all started VMs in an application."""
-    vms = app['applicationLayer']['vm']
-    for vm in vms:
+    for vm in app['vms']:
         if vm['dynamicMetadata']['state'] == 'STARTED':
             env.api.stop_vm(app, vm)
     app = cache.get_application(app['id'], force_reload=True)
@@ -84,7 +82,7 @@ def get_application_state(app):
     The state is obtained by reducing the states of all the application VMs
     using ``combine_states()``.
     """
-    vms = app['applicationLayer'].get('vm', [])
+    vms = app.get('vms', [])
     if not vms:
         return 'DRAFT'
     combine = functools.partial(combine_states, ordering=vm_ordered_states)
@@ -100,7 +98,7 @@ def get_blueprint_state(bp):
     The state is obtained by reducing the states of all the blueprint VMs
     using ``combine_states()``.
     """
-    vms = bp['applicationLayer'].get('vm', [])
+    vms = bp.get('vms', [])
     if not vms:
         return 'EMPTY'
     combine = functools.partial(combine_states, ordering=bp_ordered_states)
@@ -182,8 +180,7 @@ def wait_until_application_accepts_ssh(app, vms, timeout=None,
     if poll_timeout is None:
         poll_timeout = 5
     waitaddrs = set((vm['dynamicMetadata']['externalIp']
-                     for vm in app['applicationLayer']['vm']
-                     if vm['name'] in vms))
+                     for vm in app['vms'] if vm['name'] in vms))
     aliveaddrs = set()
     end_time = time.time() + timeout
     # For the intricate details on non-blocking connect()'s, see Stevens,
@@ -236,7 +233,7 @@ def wait_until_application_accepts_ssh(app, vms, timeout=None,
             return
         console.show_progress('C')  # 'C' = Connecting
         time.sleep(max(0, poll_end_time - time.time()))
-    unreachable = set((vm['name'] for vm in app['applicationLayer']['vm']
+    unreachable = set((vm['name'] for vm in app['vms']
                        if vm['dynamicMetadata']['externalIp'] in waitaddrs))
     noun = inflect.plural_noun('VM', len(unreachable))
     vmnames = '`{0}`'.format('`, `'.join(sorted(unreachable)))
@@ -262,7 +259,7 @@ def reuse_existing_application(appdef):
         if parts[0] != project['name'] or parts[1] != appdef['name']:
             continue
         app = cache.get_application(app['id'])
-        vms = app['applicationLayer'].get('vm', [])
+        vms = app.get('vms', [])
         if not vms:
             continue
         state = get_application_state(app)
@@ -309,7 +306,9 @@ def get_new_mac():
     # random Macs to have a small enough probability not to conflict.
     mac = env._mac_base
     env._mac_base += 1
-    if (env._mac_base & 0xffffff) == 0xffffff:
+    # Why is a value of FF in the fourth byte considered invalid by the API?
+    # As a workaround we our 24-bit range a bit wrap earlier.
+    if (env._mac_base & 0xffffff) >= 0xfeffffff:
         env._mac_base = _ravello_base
     parts = ['{0:02X}'.format((mac >> ((5-i)*8)) & 0xff) for i in range(6)]
     mac = ':'.join(parts)
@@ -357,26 +356,26 @@ def create_new_application(appdef, name_is_template=True):
     bpname = appdef.get('blueprint')
     if bpname:
         blueprint = cache.get_blueprint(name=bpname)
-        app = env.api.create_application(app, blueprint)
-        app = cache.get_application(app['id'])  # update cache
+        app['blueprintId'] = blueprint['id']
     else:
         vms = []
         for vmdef in appdef.get('vms', []):
             vm = create_new_vm(vmdef)
             vms.append(vm)
-        app['applicationLayer'] = { 'vm': vms }
-        app = env.api.create_application(app)
-        app = cache.get_application(app['id'])  # update cache
+        app['vms'] = vms
+    app = env.api.create_application(app)
+    app = cache.get_application(app['id'])  # update cache
     return app
 
 
-def publish_application(app, cloud='AMAZON', region=None):
+def publish_application(app, cloud=None, region=None):
     """Publish the application ``app``."""
     req = {}
-    if cloud:
-        req['prefferedCloud'] = cloud  # sic.
-    if region:
-        req['prefferedRegion'] = region
+    if cloud is None:
+        cloud = 'AMAZON'
+        region = 'Virginia'
+    req = { 'prefferedCloud': cloud,  # sic
+            'prefferedRegion': region }
     env.api.publish_application(app, req)
     app = cache.get_application(app['id'], force_reload=True)
     return app
@@ -407,10 +406,13 @@ def appdef_from_app(app):
     appdef['name'] = app['name']
     appdef['description'] = app.get('description') or ''
     appdef['state'] = get_application_state(app)
-    appdef['cloud'] = app['cloud']
-    appdef['region'] = app['regionName']
+    # Blueprints do not have cloud/regionName
+    if 'cloud' in app:
+        appdef['cloud'] = app['cloud']
+    if 'regionName' in app:
+        appdef['region'] = app['regionName']
     vmdefs = appdef['vms'] = []
-    for vm in app['applicationLayer'].get('vm', []):
+    for vm in app.get('vms', []):
         vmdef = { 'id': vm['id'] }
         vmdef['name'] = vm['name']
         vmdef['description'] = vm.get('description') or ''
@@ -492,12 +494,12 @@ def wait_for_application(app, vms, timeout=None):
 
 def get_vm(app, vmname):
     """Return the VM ``vmname`` from application ``application``."""
-    for vm in app.get('applicationLayer', {}).get('vm', []):
+    for vm in app.get('vms', []):
         if vm.get('name') == vmname:
             return vm
 
 def get_vms(app):
-    return app.get('applicationLayer', {}).get('vm', [])
+    return app.get('vms', [])
 
 
 def default_application(appname):

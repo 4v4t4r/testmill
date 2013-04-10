@@ -112,7 +112,7 @@ def do_run(args, env):
     console.info('\n== The following services will be available for {0} '
                  'minutes:\n', appdef['keepalive'])
 
-    for vm in app['applicationLayer']['vm']:
+    for vm in app['vms']:
         if vm['name'] not in vms:
             continue
         svcs = vm.get('suppliedServices')
