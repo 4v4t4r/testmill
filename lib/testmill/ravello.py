@@ -326,7 +326,7 @@ class RavelloClient(object):
 
     def get_project(self, id):
         """Return a single project."""
-        response = self._make_request('GET', '/projects/%s' % id)
+        response = self._make_request('GET', '/projects/{0}'.format(id))
         return response.entity['project']
 
     def get_projects(self):
@@ -341,28 +341,22 @@ class RavelloClient(object):
 
     def get_pubkey(self, id):
         """Get a single public key."""
-        # XXX: API missing, use get_pubkeys()
-        pubkeys = self.get_pubkeys()
-        for pubkey in pubkeys:
-            if pubkey['id'] == id:
-                return pubkey
+        response = self._make_request('GET', '/keypairs/{0}'.format(id))
+        return response.entity
 
     def get_pubkeys(self):
         """Get the public keys."""
-        response = self._make_request('GET', '/keypairs/%s' % self._project)
-        pubkeys = response.entity.get('keypair', [])
-        return pubkeys
+        response = self._make_request('GET', '/keypairs')
+        return response.entity
 
     def create_pubkey(self, pubkey):
         """Upload a public key."""
-        request = pubkey.copy()
-        request['projectId'] = self._project
-        response = self._make_request('POST', '/keypair', request)
+        response = self._make_request('POST', '/keypairs', pubkey)
         return response.entity
 
     def create_keypair(self):
         """Create a newly generate keypair."""
-        response = self._make_request('GET', '/keypair/random')
+        response = self._make_request('POST', '/keypairs/generate')
         return response.entity
 
     # Images (= saved VMs)
@@ -389,98 +383,88 @@ class RavelloClient(object):
 
     def get_application(self, id):
         """Get a single application."""
-        response = self._make_request('GET', '/instance/%s' % id)
+        response = self._make_request('GET', '/applications/{0}'.format(id))
         if not response.entity:
             return
-        app = response.entity
-        # TODO: does it make sense to have "appMetadata" be the "real"
-        # application and put it at the top-level?
-        for key in list(app['appMetadata']):
-            app[key] = app['appMetadata'][key]
-        del app['appMetadata']
-        return app
+        # Shuffle around the keys under "appMetadata" so that an application
+        # returned from get_application() is a superset of an application
+        # returned by get_applications().
+        application = response.entity
+        application.update(application.pop('appMetadata'))
+        return application
 
     def get_applications(self):
         """Return all applications."""
-        response = self._make_request('GET', '/instances/%s' % self._project)
-        applications = response.entity.get('appMetadata', [])
-        return applications
+        response = self._make_request('GET', '/applications')
+        return response.entity
 
-    def create_application(self, application, blueprint=None):
+    def create_application(self, application):
         """Create a new application."""
-        if blueprint is not None:
-            url = '/blueprint/{0}/instance/{1}' \
-                        .format(blueprint['id'], application['name'])
-            response = self._make_request('POST', url)
-            application = response.entity
-        else:
-            application['appMetadata'] = {}
-            for key in list(application):
-                if key not in ('appMetadata', 'applicationLayer'):
-                    application['appMetadata'][key] = application[key]
-                    del application[key]
-            response = self._make_request('POST', '/instance', application)
-            application = response.entity
-            for key in list(application['appMetadata']):
-                application[key] = application['appMetadata'][key]
-            del application['appMetadata']
+        application = application.copy()
+        application['appMetadata'] = {}
+        for key in list(application):
+            if key not in ('vms', 'network', 'appMetadata'):
+                application['appMetadata'][key] = application.pop(key)
+        response = self._make_request('POST', '/applications', application)
+        application = response.entity
+        application.update(application.pop('appMetadata'))
         return application
 
     def publish_application(self, application, deploy=None):
         """Publish an application."""
-        request = deploy.copy() if deploy else {}
-        request['instanceId'] = application['id']
-        self._make_request('POST', '/instance/publish', request)
+        request = deploy or {}
+        url = '/applications/{0}/publish'.format(application['id'])
+        self._make_request('POST', url, request)
 
     def remove_application(self, application):
         """Remove an application."""
-        url = '/instance/{0}'.format(application['id'])
+        url = '/applications/{0}'.format(application['id'])
         self._make_request('DELETE', url)
 
     # VMs
 
     def start_vm(self, application, vm):
         """Start a virtual machine."""
-        url = '/deployment/app/%s/vm/%s/start' % (application['id'], vm['id'])
+        url = '/applications/{0}/vms/{1}/start'.format(application['id'], vm['id'])
         self._make_request('POST', url)
 
     def stop_vm(self, application, vm):
         """Stop a virtual machine."""
-        url = '/deployment/app/%s/vm/%s/stopguest' % (application['id'], vm['id'])
+        url = '/applications/{0}/vms/{1}/stop'.format(application['id'], vm['id'])
         self._make_request('POST', url)
 
     # Blueprints
 
     def get_blueprint(self, id):
         """Get a single blueprint."""
-        response = self._make_request('GET', '/blueprint/%s' % id)
+        response = self._make_request('GET', '/blueprints/{0}'.format(id))
         if not response.entity:
             return
-        bp = response.entity
-        for key in list(bp['appMetadata']):
-            bp[key] = bp['appMetadata'][key]
-        del bp['appMetadata']
-        return bp
+        blueprint = response.entity
+        blueprint.update(blueprint.pop('appMetadata'))
+        return blueprint
 
     def get_blueprints(self):
         """Return all blueprints."""
-        response = self._make_request('GET', '/blueprints/%s' % self._project)
-        blueprints = response.entity.get('appMetadata', [])
-        return blueprints
+        response = self._make_request('GET', '/blueprints')
+        return response.entity
 
     def create_blueprint(self, name, application):
         """Create a new blueprint ``name`` based on ``application``."""
         offline = 'true'
-        for vm in application.get('applicationLayer', {}).get('vm', []):
-            if application['state'] != 'STOPPED':
+        for vm in application.get('vms', []):
+            if vm.get('dynamicMetadata', {}).get('state') != 'STOPPED':
                 offline = 'false'
                 break
-        url = '/instance/{0}/blueprint/{1}/{2}' \
-                    .format(application['id'], name, offline)
-        response = self._make_request('POST', url)
-        return response.entity
+        request = { 'blueprintName': name,
+                    'applicationId': application['id'],
+                    'isOffline': offline }
+        response = self._make_request('POST', '/blueprints', request)
+        blueprint = response.entity
+        blueprint.update(blueprint.pop('appMetadata'))
+        return blueprint
 
     def remove_blueprint(self, blueprint):
         """Remove a blueprint."""
-        url = '/blueprint/{0}'.format(blueprint['id'])
+        url = '/blueprints/{0}'.format(blueprint['id'])
         self._make_request('DELETE', url)

@@ -65,7 +65,7 @@ class TestExamples(TestSuite):
         os.chdir(project)
         status = main(['-u', testenv.username, '-p', testenv.password,
                        '-s', testenv.service_url, 'run', 'acceptance'])
-        for vm in env.application['applicationLayer']['vm']:
+        for vm in env.application['vms']:
             if vm['name'] == 'web':
                 break
         assert vm['name'] == 'web'

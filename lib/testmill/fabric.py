@@ -230,7 +230,7 @@ def create_application(name=None, blueprint=None, vms=None, cloud=None,
     app = application.create_new_application(appdef, False)
     app = application.publish_application(app, cloud, region)
     if wait:
-        vms = set((vm['name'] for vm in app['applicationLayer']['vm']))
+        vms = set((vm['name'] for vm in app['vms']))
         with env.let(quiet=not show_progress):
             app = application.wait_for_application(app, vms)
     return application.appdef_from_app(app)
@@ -269,7 +269,7 @@ def start_application(name, wait=True, show_progress=True, timeout=1200):
         state = application.get_application_state(app)
         if state not in application.vm_reuse_states:
             error.raise_error("Cannot wait for app in state '{0}'.", state)
-        vms = set((vm['name'] for vm in app['applicationLayer']['vm']))
+        vms = set((vm['name'] for vm in app['vms']))
         with env.let(quiet=not show_progress):
             application.wait_for_application(app, vms, timeout)
 
@@ -429,7 +429,7 @@ def lookup(appname, *vms):
         vms = [vms]
     app = cache.get_application(app['id'])
     hosts = []
-    for vm in app['applicationLayer'].get('vm', []):
+    for vm in app.get('vms', []):
         if vms and vm['name'] not in vms:
             continue
         host = vm['dynamicMetadata']['externalIp']
@@ -466,7 +466,7 @@ def reverse_lookup(host):
     # host string without going the application ending up in the case. So
     # therefore this should be fine.
     for app in env._applications_byid.values():
-        for vm in app['applicationLayer'].get('vm', {}):
+        for vm in app.get('vms', []):
             addr = vm.get('dynamicMetadata', {}).get('externalIp')
             if addr == host:
                 return (app['name'], vm['name'])

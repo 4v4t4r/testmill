@@ -49,7 +49,7 @@ def run_all_tasks(app, vms):
     else:
         error.raise_error('Application definition not found?')
 
-    for vm in app['applicationLayer']['vm']:
+    for vm in app['vms']:
         if vm['name'] not in vms:
             continue
         ipaddr = vm['dynamicMetadata']['externalIp']
@@ -117,7 +117,7 @@ def preinit():
     shutdown_urls = []
     url_template = '{0}/deployment/app/{1}/vm/{2}/stop'
     app = env.application
-    myself_last = sorted(app['applicationLayer']['vm'],
+    myself_last = sorted(app['vms'],
                          key=lambda vm: vm['id'] != env.vm['id'])
     for vm in myself_last:
         url = url_template.format(env.api.url, app['id'], vm['id'])
@@ -204,7 +204,7 @@ def run_tasklist(passed_env):
     for vmdef in env.appdef['vms']:
         if vmdef['name'] == vmname:
             break
-    for vm in env.application['applicationLayer']['vm']:
+    for vm in env.application['vms']:
         if vm['name'] == vmname:
             break
 
